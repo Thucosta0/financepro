@@ -10,7 +10,7 @@ import { Repeat, Plus, TrendingUp, TrendingDown, DollarSign, Target, Calendar, P
 import Link from 'next/link'
 
 export default function DashboardPage() {
-  const [searchTerm, setSearchTerm] = useState('')
+  const [searchTerm] = useState('')
   const [showNewTransactionModal, setShowNewTransactionModal] = useState(false)
   const [showRecurringModal, setShowRecurringModal] = useState(false)
   const [activeChart, setActiveChart] = useState('overview')
@@ -26,7 +26,6 @@ export default function DashboardPage() {
     .reduce((sum, t) => sum + t.amount, 0)
     
   const saldo = receitas - despesas
-  const previousMonthBalance = 0 // Valor que pode vir de histórico futuro
 
   const filteredTransactions = transactions.filter(transaction =>
     transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||

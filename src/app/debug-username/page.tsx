@@ -19,7 +19,6 @@ interface DebugInfo {
 }
 
 export default function DebugUsernamePage() {
-  const { login } = useAuth()
   const [users, setUsers] = useState<UserProfile[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [debugInfo, setDebugInfo] = useState<DebugInfo[]>([])
@@ -107,7 +106,7 @@ export default function DebugUsernamePage() {
         } else if (thucostUserIlike) {
           info.push({ type: 'success', message: `✅ Usuário thucosta encontrado (busca case-insensitive)!` })
           info.push({ type: 'info', message: `📋 Dados: Nome: ${thucostUserIlike.name}, Email: ${thucostUserIlike.email}` })
-          info.push({ type: 'info', message: `⚠️ Username salvo como: "${thucostUserIlike.username}" (pode ter diferença de maiúsculas)` })
+          info.push({ type: 'info', message: `⚠️ Username salvo como: &quot;${thucostUserIlike.username}&quot; (pode ter diferença de maiúsculas)` })
         } else {
           info.push({ type: 'error', message: `❌ Username thucosta não encontrado em nenhuma busca` })
           info.push({ type: 'error', message: `❌ Busca exata: ${thucostError?.message}` })

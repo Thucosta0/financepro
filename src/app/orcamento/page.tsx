@@ -1,15 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, TrendingUp, AlertTriangle, Lightbulb } from 'lucide-react'
+import { Plus, AlertTriangle, Lightbulb } from 'lucide-react'
 import { useFinancial } from '@/context/financial-context'
 import { NewCategoryModal } from '@/components/new-category-modal'
 import { ProtectedRoute } from '@/components/protected-route'
 
 export default function OrcamentoPage() {
   const [showNewCategoryModal, setShowNewCategoryModal] = useState(false)
-  const { transactions, categories, getFinancialSummary } = useFinancial()
-  const { receitas, despesas, saldo } = getFinancialSummary()
+  const { transactions, categories } = useFinancial()
 
   // Gerar orçamentos baseados nas categorias existentes
   const orcamentosAtualizados = categories

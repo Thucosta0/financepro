@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, CreditCard, Edit2, Trash2, Eye, EyeOff, Search, X } from 'lucide-react'
+import { Plus, Edit2, Trash2, Eye, EyeOff, Search, X } from 'lucide-react'
 import { useFinancial } from '@/context/financial-context'
 import { ProtectedRoute } from '@/components/protected-route'
 
@@ -10,7 +10,7 @@ export default function CartoesPage() {
   const [filtroTipo, setFiltroTipo] = useState('todos')
   const [showModal, setShowModal] = useState(false)
   const [editingCard, setEditingCard] = useState<string | null>(null)
-  const { cards, addCard, updateCard, deleteCard, getCardSummary } = useFinancial()
+  const { cards, updateCard, deleteCard, getCardSummary } = useFinancial()
 
   const cartoesFiltrados = cards.filter(cartao => {
     const matchNome = cartao.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -378,7 +378,7 @@ function CardModal({ isOpen, onClose, cardId }: {
             </label>
             <select
               value={formData.type}
-              onChange={(e) => setFormData({...formData, type: e.target.value as any})}
+              onChange={(e) => setFormData({...formData, type: e.target.value as 'credit' | 'debit' | 'cash'})}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
             >
               <option value="credit">Crédito</option>

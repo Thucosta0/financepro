@@ -22,7 +22,6 @@ export default function CadastroPage() {
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error', message: string } | null>(null)
   const [isResendingEmail, setIsResendingEmail] = useState(false)
   const { register, isLoading } = useAuth()
-  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

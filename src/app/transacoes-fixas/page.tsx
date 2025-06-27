@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Repeat, Play, Pause, Trash2, Edit, Calendar, Clock, DollarSign } from 'lucide-react'
+import { Plus, Play, Pause, Trash2 } from 'lucide-react'
 import { useFinancial } from '@/context/financial-context'
 import { RecurringTransactionModal } from '@/components/recurring-transaction-modal'
 

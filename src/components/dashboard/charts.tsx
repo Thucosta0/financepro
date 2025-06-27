@@ -1,6 +1,6 @@
 'use client'
 
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Area, AreaChart } from 'recharts'
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts'
 import type { Transaction } from '@/lib/supabase-client'
 
 interface ChartsProps {
@@ -9,6 +9,17 @@ interface ChartsProps {
 
 // Cores para os gráficos
 const COLORS = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316']
+
+interface TooltipProps {
+  active?: boolean;
+  payload?: Array<{
+    name: string;
+    value: number;
+    color: string;
+    payload?: any;
+  }>;
+  label?: string;
+}
 
 export function ExpenseByCategoryChart({ transactions }: ChartsProps) {
   const expenseData = transactions
@@ -35,7 +46,7 @@ export function ExpenseByCategoryChart({ transactions }: ChartsProps) {
     }).format(value)
   }
 
-  const CustomTooltip = ({ active, payload }: any) => {
+  const CustomTooltip = ({ active, payload }: TooltipProps) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-white p-3 border rounded-lg shadow-lg">
@@ -135,12 +146,12 @@ export function IncomeVsExpenseChart({ transactions }: ChartsProps) {
     }).format(value)
   }
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload, label }: TooltipProps) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-white p-3 border rounded-lg shadow-lg">
           <p className="font-medium mb-2">{label}</p>
-          {payload.map((entry: any, index: number) => (
+          {payload.map((entry, index: number) => (
             <p key={index} style={{ color: entry.color }} className="font-semibold">
               {entry.name}: {formatValue(entry.value)}
             </p>
@@ -205,7 +216,7 @@ export function BalanceEvolutionChart({ transactions }: ChartsProps) {
     }).format(value)
   }
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload, label }: TooltipProps) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-white p-3 border rounded-lg shadow-lg">
@@ -284,7 +295,7 @@ export function TopCategoriesChart({ transactions }: ChartsProps) {
     }).format(value)
   }
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload, label }: TooltipProps) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-white p-3 border rounded-lg shadow-lg">
@@ -293,7 +304,7 @@ export function TopCategoriesChart({ transactions }: ChartsProps) {
             {formatValue(payload[0].value)}
           </p>
           <p className="text-gray-600 text-sm">
-            {payload[0].payload.count} transações
+            {payload[0].payload?.count} transações
           </p>
         </div>
       )
@@ -333,7 +344,6 @@ export function TopCategoriesChart({ transactions }: ChartsProps) {
 
 export function WeeklySpendingChart({ transactions }: ChartsProps) {
   const today = new Date()
-  const oneWeekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
   
   const weeklyData = []
   for (let i = 6; i >= 0; i--) {
@@ -361,12 +371,12 @@ export function WeeklySpendingChart({ transactions }: ChartsProps) {
     }).format(value)
   }
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload, label }: TooltipProps) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-white p-3 border rounded-lg shadow-lg">
           <p className="font-medium mb-2">{label}</p>
-          {payload.map((entry: any, index: number) => (
+          {payload.map((entry, index: number) => (
             <p key={index} style={{ color: entry.color }} className="font-semibold">
               {entry.name}: {formatValue(entry.value)}
             </p>
