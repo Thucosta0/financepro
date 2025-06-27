@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase-client'
 import { CheckCircle, AlertCircle, ArrowLeft, Loader2 } from 'lucide-react'
@@ -11,14 +11,14 @@ export default function ConfirmEmailContent() {
   const [message, setMessage] = useState('')
   
   const router = useRouter()
-  const searchParams = useSearchParams()
 
   useEffect(() => {
     const confirmEmail = async () => {
       try {
-        // Verificar se temos os tokens necessários
-        const token = searchParams.get('token')
-        const type = searchParams.get('type')
+        // Obter parâmetros da URL usando window.location (apenas no cliente)
+        const urlParams = new URLSearchParams(window.location.search)
+        const token = urlParams.get('token')
+        const type = urlParams.get('type')
         
         if (!token || type !== 'signup') {
           setStatus('error')
@@ -59,8 +59,11 @@ export default function ConfirmEmailContent() {
       }
     }
 
-    confirmEmail()
-  }, [searchParams, router])
+    // Só executar no lado cliente
+    if (typeof window !== 'undefined') {
+      confirmEmail()
+    }
+  }, [router])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-600 flex items-center justify-center p-4">
