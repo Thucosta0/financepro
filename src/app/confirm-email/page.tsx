@@ -2,7 +2,7 @@
 
 import { Suspense } from 'react'
 import { Loader2 } from 'lucide-react'
-import ConfirmEmailContent from './confirm-email-content'
+import ConfirmEmailContent from './content'
 
 function LoadingFallback() {
   return (
