@@ -1,13 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase-client'
 
 export default function TestResetPage() {
   const [logs, setLogs] = useState<string[]>([])
   const [sessionInfo, setSessionInfo] = useState<any>(null)
-  const searchParams = useSearchParams()
+  const [urlParams, setUrlParams] = useState<URLSearchParams | null>(null)
 
   const addLog = (message: string) => {
     setLogs(prev => [...prev, `${new Date().toLocaleTimeString()}: ${message}`])
@@ -15,92 +14,98 @@ export default function TestResetPage() {
   }
 
   useEffect(() => {
-    const testAll = async () => {
-      addLog('=== TESTE DE RESET DE SENHA ===')
-      addLog(`URL completa: ${window.location.href}`)
+    // Só executar no lado cliente
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      setUrlParams(params)
       
-      // Todos os parâmetros da URL
-      const allParams = Object.fromEntries(searchParams.entries())
-      addLog(`Parâmetros: ${JSON.stringify(allParams, null, 2)}`)
+      const testAll = async () => {
+        addLog('=== TESTE DE RESET DE SENHA ===')
+        addLog(`URL completa: ${window.location.href}`)
+        
+        // Todos os parâmetros da URL
+        const allParams = Object.fromEntries(params.entries())
+        addLog(`Parâmetros: ${JSON.stringify(allParams, null, 2)}`)
 
-      // Verificar sessão atual
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession()
-        if (error) {
-          addLog(`Erro ao verificar sessão: ${error.message}`)
-        } else {
-          addLog(`Sessão atual: ${session ? 'ATIVA' : 'INATIVA'}`)
-          if (session) {
-            setSessionInfo(session)
-            addLog(`Usuário: ${session.user.email}`)
-          }
-        }
-      } catch (error) {
-        addLog(`Erro ao verificar sessão: ${error}`)
-      }
-
-      // Teste 1: exchangeCodeForSession
-      const code = searchParams.get('code')
-      if (code) {
-        addLog('--- TESTE 1: exchangeCodeForSession ---')
+        // Verificar sessão atual
         try {
-          const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+          const { data: { session }, error } = await supabase.auth.getSession()
           if (error) {
-            addLog(`ERRO: ${error.message}`)
+            addLog(`Erro ao verificar sessão: ${error.message}`)
           } else {
-            addLog('SUCESSO com exchangeCodeForSession')
-            setSessionInfo(data.session)
+            addLog(`Sessão atual: ${session ? 'ATIVA' : 'INATIVA'}`)
+            if (session) {
+              setSessionInfo(session)
+              addLog(`Usuário: ${session.user.email}`)
+            }
           }
         } catch (error) {
-          addLog(`EXCEÇÃO: ${error}`)
+          addLog(`Erro ao verificar sessão: ${error}`)
         }
-      }
 
-      // Teste 2: setSession com tokens
-      const accessToken = searchParams.get('access_token')
-      const refreshToken = searchParams.get('refresh_token')
-      if (accessToken && refreshToken) {
-        addLog('--- TESTE 2: setSession ---')
-        try {
-          const { error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken
-          })
-          if (error) {
-            addLog(`ERRO: ${error.message}`)
-          } else {
-            addLog('SUCESSO com setSession')
+        // Teste 1: exchangeCodeForSession
+        const code = params.get('code')
+        if (code) {
+          addLog('--- TESTE 1: exchangeCodeForSession ---')
+          try {
+            const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+            if (error) {
+              addLog(`ERRO: ${error.message}`)
+            } else {
+              addLog('SUCESSO com exchangeCodeForSession')
+              setSessionInfo(data.session)
+            }
+          } catch (error) {
+            addLog(`EXCEÇÃO: ${error}`)
           }
-        } catch (error) {
-          addLog(`EXCEÇÃO: ${error}`)
         }
-      }
 
-      // Teste 3: verifyOtp
-      const tokenHash = searchParams.get('token_hash') || searchParams.get('token')
-      const type = searchParams.get('type')
-      if (tokenHash && type === 'recovery') {
-        addLog('--- TESTE 3: verifyOtp ---')
-        try {
-          const { error } = await supabase.auth.verifyOtp({
-            token_hash: tokenHash,
-            type: 'recovery'
-          })
-          if (error) {
-            addLog(`ERRO: ${error.message}`)
-          } else {
-            addLog('SUCESSO com verifyOtp')
+        // Teste 2: setSession com tokens
+        const accessToken = params.get('access_token')
+        const refreshToken = params.get('refresh_token')
+        if (accessToken && refreshToken) {
+          addLog('--- TESTE 2: setSession ---')
+          try {
+            const { error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken
+            })
+            if (error) {
+              addLog(`ERRO: ${error.message}`)
+            } else {
+              addLog('SUCESSO com setSession')
+            }
+          } catch (error) {
+            addLog(`EXCEÇÃO: ${error}`)
           }
-        } catch (error) {
-          addLog(`EXCEÇÃO: ${error}`)
         }
+
+        // Teste 3: verifyOtp
+        const tokenHash = params.get('token_hash') || params.get('token')
+        const type = params.get('type')
+        if (tokenHash && type === 'recovery') {
+          addLog('--- TESTE 3: verifyOtp ---')
+          try {
+            const { error } = await supabase.auth.verifyOtp({
+              token_hash: tokenHash,
+              type: 'recovery'
+            })
+            if (error) {
+              addLog(`ERRO: ${error.message}`)
+            } else {
+              addLog('SUCESSO com verifyOtp')
+            }
+          } catch (error) {
+            addLog(`EXCEÇÃO: ${error}`)
+          }
+        }
+
+        addLog('=== FIM DOS TESTES ===')
       }
 
-      addLog('=== FIM DOS TESTES ===')
+      testAll()
     }
-
-    testAll()
-  }, [searchParams])
+  }, [])
 
   const testPasswordUpdate = async () => {
     addLog('--- TESTE DE ATUALIZAÇÃO DE SENHA ---')
