@@ -10,7 +10,15 @@ export default function CartoesPage() {
   const [filtroTipo, setFiltroTipo] = useState('todos')
   const [showModal, setShowModal] = useState(false)
   const [editingCard, setEditingCard] = useState<string | null>(null)
-  const { cards, updateCard, deleteCard, getCardSummary } = useFinancial()
+  const { cards, updateCard, deleteCard, transactions } = useFinancial()
+
+  const getCardSummary = (cardId: string) => {
+    const cardTransactions = transactions.filter(t => t.card_id === cardId)
+    const total = cardTransactions.reduce((sum, t) => {
+      return t.type === 'expense' ? sum + t.amount : sum - t.amount
+    }, 0)
+    return { total, transactions: cardTransactions.length }
+  }
 
   const cartoesFiltrados = cards.filter(cartao => {
     const matchNome = cartao.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -101,7 +109,7 @@ export default function CartoesPage() {
             <div>
               <p className="text-sm text-gray-600">Cartões Ativos</p>
               <p className="text-xl font-semibold text-green-600">
-                {cards.filter(c => c.isActive).length}
+                {cards.filter(c => c.is_active).length}
               </p>
             </div>
           </div>
@@ -147,16 +155,16 @@ export default function CartoesPage() {
                       <div className="text-2xl mb-2">{getCardIcon(cartao.type)}</div>
                       <h3 className="font-semibold text-lg">{cartao.name}</h3>
                       <p className="text-sm opacity-90">{cartao.bank}</p>
-                      {cartao.lastDigits && (
-                        <p className="text-xs opacity-75">**** {cartao.lastDigits}</p>
+                      {cartao.last_digits && (
+                        <p className="text-xs opacity-75">**** {cartao.last_digits}</p>
                       )}
                     </div>
                     <div className="flex items-center space-x-2">
                       <button
-                        onClick={() => updateCard(cartao.id, { isActive: !cartao.isActive })}
-                        className={`p-1 rounded ${cartao.isActive ? 'bg-white/20' : 'bg-red-500/20'}`}
+                        onClick={() => updateCard(cartao.id, { is_active: !cartao.is_active })}
+                        className={`p-1 rounded ${cartao.is_active ? 'bg-white/20' : 'bg-red-500/20'}`}
                       >
-                        {cartao.isActive ? 
+                        {cartao.is_active ? 
                           <Eye className="h-4 w-4" /> : 
                           <EyeOff className="h-4 w-4" />
                         }
@@ -173,10 +181,10 @@ export default function CartoesPage() {
                 {/* Body do cartão */}
                 <div className="p-4">
                   <div className="space-y-3">
-                    {cartao.limit && (
+                    {cartao.card_limit && (
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-gray-600">Limite:</span>
-                        <span className="font-medium">{formatarValor(cartao.limit)}</span>
+                        <span className="font-medium">{formatarValor(cartao.card_limit)}</span>
                       </div>
                     )}
                     <div className="flex justify-between items-center">
@@ -189,19 +197,19 @@ export default function CartoesPage() {
                       <span className="text-sm text-gray-600">Transações:</span>
                       <span className="font-medium">{transactions}</span>
                     </div>
-                    {cartao.limit && total > 0 && (
+                    {cartao.card_limit && total > 0 && (
                       <div className="space-y-2">
                         <div className="flex justify-between text-xs text-gray-600">
                           <span>Limite usado:</span>
-                          <span>{((total / cartao.limit) * 100).toFixed(1)}%</span>
+                          <span>{((total / cartao.card_limit) * 100).toFixed(1)}%</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
                           <div 
                             className={`h-2 rounded-full ${
-                              (total / cartao.limit) * 100 > 80 ? 'bg-red-500' : 
-                              (total / cartao.limit) * 100 > 60 ? 'bg-yellow-500' : 'bg-green-500'
+                              (total / cartao.card_limit) * 100 > 80 ? 'bg-red-500' : 
+                              (total / cartao.card_limit) * 100 > 60 ? 'bg-yellow-500' : 'bg-green-500'
                             }`}
-                            style={{ width: `${Math.min((total / cartao.limit) * 100, 100)}%` }}
+                            style={{ width: `${Math.min((total / cartao.card_limit) * 100, 100)}%` }}
                           ></div>
                         </div>
                       </div>
@@ -211,11 +219,11 @@ export default function CartoesPage() {
                   {/* Ações */}
                   <div className="flex items-center justify-between mt-4 pt-4 border-t">
                     <span className={`text-xs px-2 py-1 rounded-full ${
-                      cartao.isActive 
+                      cartao.is_active 
                         ? 'bg-green-100 text-green-800' 
                         : 'bg-red-100 text-red-800'
                     }`}>
-                      {cartao.isActive ? 'Ativo' : 'Inativo'}
+                      {cartao.is_active ? 'Ativo' : 'Inativo'}
                     </span>
                     <div className="flex items-center space-x-2">
                       <button 
@@ -283,10 +291,10 @@ function CardModal({ isOpen, onClose, cardId }: {
     name: '',
     type: 'credit' as 'credit' | 'debit' | 'cash',
     bank: '',
-    limit: '',
+    card_limit: '',
     color: '#3b82f6',
-    lastDigits: '',
-    isActive: true
+    last_digits: '',
+    is_active: true
   })
 
   // Se estiver editando, carrega os dados do cartão
@@ -296,10 +304,10 @@ function CardModal({ isOpen, onClose, cardId }: {
       name: editingCard.name,
       type: editingCard.type,
       bank: editingCard.bank,
-      limit: editingCard.limit?.toString() || '',
+      card_limit: editingCard.card_limit?.toString() || '',
       color: editingCard.color,
-      lastDigits: editingCard.lastDigits,
-      isActive: editingCard.isActive
+      last_digits: editingCard.last_digits || '',
+      is_active: editingCard.is_active
     })
   }
 
@@ -310,10 +318,10 @@ function CardModal({ isOpen, onClose, cardId }: {
       name: formData.name,
       type: formData.type,
       bank: formData.bank,
-      limit: formData.limit ? parseFloat(formData.limit) : undefined,
+      card_limit: formData.card_limit ? parseFloat(formData.card_limit) : undefined,
       color: formData.color,
-      lastDigits: formData.lastDigits,
-      isActive: formData.isActive
+      last_digits: formData.last_digits,
+      is_active: formData.is_active
     }
 
     if (cardId) {
@@ -326,10 +334,10 @@ function CardModal({ isOpen, onClose, cardId }: {
       name: '',
       type: 'credit',
       bank: '',
-      limit: '',
+      card_limit: '',
       color: '#3b82f6',
-      lastDigits: '',
-      isActive: true
+      last_digits: '',
+      is_active: true
     })
     onClose()
   }
@@ -409,8 +417,8 @@ function CardModal({ isOpen, onClose, cardId }: {
               type="text"
               maxLength={4}
               pattern="[0-9]{4}"
-              value={formData.lastDigits}
-              onChange={(e) => setFormData({...formData, lastDigits: e.target.value.replace(/\D/g, '')})}
+              value={formData.last_digits}
+              onChange={(e) => setFormData({...formData, last_digits: e.target.value.replace(/\D/g, '')})}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               placeholder="1234"
             />
@@ -427,8 +435,8 @@ function CardModal({ isOpen, onClose, cardId }: {
               <input
                 type="number"
                 step="0.01"
-                value={formData.limit}
-                onChange={(e) => setFormData({...formData, limit: e.target.value})}
+                value={formData.card_limit}
+                onChange={(e) => setFormData({...formData, card_limit: e.target.value})}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 placeholder="0,00"
               />
@@ -454,8 +462,8 @@ function CardModal({ isOpen, onClose, cardId }: {
             <input
               type="checkbox"
               id="isActive"
-              checked={formData.isActive}
-              onChange={(e) => setFormData({...formData, isActive: e.target.checked})}
+              checked={formData.is_active}
+              onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
               className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
             />
             <label htmlFor="isActive" className="ml-2 text-sm text-gray-700">

@@ -20,7 +20,7 @@ export function NewTransactionModal({ isOpen, onClose }: NewTransactionModalProp
     date: new Date().toISOString().split('T')[0]
   })
 
-  const activeCards = cards.filter(card => card.isActive)
+  const activeCards = cards.filter(card => card.is_active)
   const filteredCategories = categories.filter(cat => cat.type === formData.type)
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -35,9 +35,10 @@ export function NewTransactionModal({ isOpen, onClose }: NewTransactionModalProp
       description: formData.description,
       amount: parseFloat(formData.amount),
       type: formData.type,
-      category: formData.category,
-      card: formData.card,
-      date: formData.date
+      category_id: formData.category,
+      card_id: formData.card,
+      transaction_date: formData.date,
+      is_recurring: false
     }
 
     addTransaction(transactionData)
@@ -56,7 +57,7 @@ export function NewTransactionModal({ isOpen, onClose }: NewTransactionModalProp
   }
 
   const formatCardName = (card: any) => {
-    return `${card.name} ${card.lastDigits ? `(**** ${card.lastDigits})` : ''} - ${card.bank}`
+    return `${card.name} ${card.last_digits ? `(**** ${card.last_digits})` : ''} - ${card.bank}`
   }
 
   if (!isOpen) return null
@@ -142,7 +143,7 @@ export function NewTransactionModal({ isOpen, onClose }: NewTransactionModalProp
               >
                 <option value="">Selecione uma categoria</option>
                 {filteredCategories.map((category) => (
-                  <option key={category.id} value={category.name}>
+                  <option key={category.id} value={category.id}>
                     {category.icon} {category.name}
                   </option>
                 ))}
