@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase-client'
 import { Eye, EyeOff, Lock, ArrowLeft, AlertCircle, CheckCircle, Shield } from 'lucide-react'
@@ -18,94 +18,100 @@ export default function ResetPasswordPage() {
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error', message: string } | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isValidToken, setIsValidToken] = useState<boolean | null>(null)
+  const [urlParams, setUrlParams] = useState<URLSearchParams | null>(null)
   
   const router = useRouter()
-  const searchParams = useSearchParams()
 
   useEffect(() => {
-    // Verificar se temos um token válido na URL
-    const checkToken = async () => {
-      // Verificar diferentes formatos de URL que o Supabase pode enviar
-      const accessToken = searchParams.get('access_token')
-      const refreshToken = searchParams.get('refresh_token')
-      const tokenHash = searchParams.get('token_hash') || searchParams.get('token')
-      const type = searchParams.get('type')
-      const code = searchParams.get('code')
+    // Só executar no lado cliente
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      setUrlParams(params)
+      
+      // Verificar se temos um token válido na URL
+      const checkToken = async () => {
+        // Verificar diferentes formatos de URL que o Supabase pode enviar
+        const accessToken = params.get('access_token')
+        const refreshToken = params.get('refresh_token')
+        const tokenHash = params.get('token_hash') || params.get('token')
+        const type = params.get('type')
+        const code = params.get('code')
 
-      // Método 1: Usar exchangeCodeForSession se temos um code
-      if (code) {
+        // Método 1: Usar exchangeCodeForSession se temos um code
+        if (code) {
+          try {
+            const { error } = await supabase.auth.exchangeCodeForSession(code)
+            
+            if (error) {
+              console.error('Error exchanging code for session:', error)
+            } else {
+              setIsValidToken(true)
+              return
+            }
+          } catch (error) {
+            console.error('Error with code exchange:', error)
+          }
+        }
+
+        // Método 2: Tentar com access_token e refresh_token (formato padrão)
+        if (accessToken && refreshToken) {
+          try {
+            const { error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken
+            })
+
+            if (error) {
+              console.error('Error setting session with tokens:', error)
+            } else {
+              setIsValidToken(true)
+              return
+            }
+          } catch (error) {
+            console.error('Error with token session:', error)
+          }
+        }
+
+        // Método 3: Tentar com token_hash (formato de recuperação)
+        if (tokenHash && type === 'recovery') {
+          try {
+            const { error } = await supabase.auth.verifyOtp({
+              token_hash: tokenHash,
+              type: 'recovery'
+            })
+
+            if (error) {
+              console.error('Error verifying OTP:', error)
+            } else {
+              setIsValidToken(true)
+              return
+            }
+          } catch (error) {
+            console.error('Error with OTP verification:', error)
+          }
+        }
+
+        // Método 4: Verificar se há uma sessão ativa
         try {
-          const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+          const { data: { session }, error } = await supabase.auth.getSession()
           
           if (error) {
-            console.error('Error exchanging code for session:', error)
-          } else {
+            console.error('Error getting session:', error)
+          } else if (session?.user) {
             setIsValidToken(true)
             return
           }
         } catch (error) {
-          console.error('Error with code exchange:', error)
+          console.error('Error checking session:', error)
         }
+
+        // Se chegou até aqui, o link não é válido
+        setIsValidToken(false)
       }
 
-      // Método 2: Tentar com access_token e refresh_token (formato padrão)
-      if (accessToken && refreshToken) {
-        try {
-          const { error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken
-          })
-
-          if (error) {
-            console.error('Error setting session with tokens:', error)
-          } else {
-            setIsValidToken(true)
-            return
-          }
-        } catch (error) {
-          console.error('Error with token session:', error)
-        }
-      }
-
-      // Método 3: Tentar com token_hash (formato de recuperação)
-      if (tokenHash && type === 'recovery') {
-        try {
-          const { error } = await supabase.auth.verifyOtp({
-            token_hash: tokenHash,
-            type: 'recovery'
-          })
-
-          if (error) {
-            console.error('Error verifying OTP:', error)
-          } else {
-            setIsValidToken(true)
-            return
-          }
-        } catch (error) {
-          console.error('Error with OTP verification:', error)
-        }
-      }
-
-      // Método 4: Verificar se há uma sessão ativa
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession()
-        
-        if (error) {
-          console.error('Error getting session:', error)
-        } else if (session?.user) {
-          setIsValidToken(true)
-          return
-        }
-      } catch (error) {
-        console.error('Error checking session:', error)
-      }
-
-      // Se chegou até aqui, o link não é válido
-      setIsValidToken(false)
+      checkToken()
     }
-
-    checkToken()
-  }, [searchParams])
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -189,11 +195,11 @@ export default function ResetPasswordPage() {
             </p>
             
             {/* Debug info em desenvolvimento */}
-            {process.env.NODE_ENV === 'development' && (
+            {process.env.NODE_ENV === 'development' && urlParams && (
               <div className="bg-gray-100 rounded-lg p-3 mb-4 text-left">
                 <p className="text-xs text-gray-600 mb-2">Debug info:</p>
                 <pre className="text-xs text-gray-700 whitespace-pre-wrap">
-                  {JSON.stringify(Object.fromEntries(searchParams.entries()), null, 2)}
+                  {JSON.stringify(Object.fromEntries(urlParams.entries()), null, 2)}
                 </pre>
               </div>
             )}
