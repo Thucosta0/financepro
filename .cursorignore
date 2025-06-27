@@ -1,0 +1,54 @@
+# Arquivos de dependências
+node_modules/
+.pnp
+.pnp.*
+
+# Arquivos de build
+.next/
+out/
+build/
+dist/
+
+# Arquivos de cache
+.cache/
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Arquivos de sistema
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Arquivos temporários
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Arquivos de teste e cobertura
+coverage/
+.nyc_output/
+*.lcov
+
+# Arquivos de configuração sensíveis
+# .env* (removido para permitir edição do .env.local)
+# !.env.example
+
+# Documentação gerada
+docs/api/
+
+# Arquivos de lock (opcional - remova se quiser que o Cursor os veja)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml 
