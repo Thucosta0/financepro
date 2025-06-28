@@ -738,7 +738,7 @@ export default function LandingPage() {
             
             <div className="border-t border-gray-800 mt-12 pt-8 text-center animate-fade-in-scale delay-600">
               <p className="text-gray-400">
-                © 2024 FinancePRO. Desenvolvido com ❤️ para transformar sua vida financeira.
+                © 2025 FinancePRO. Desenvolvido com ❤️ para transformar sua vida financeira.
               </p>
             </div>
           </div>
