@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Plus, AlertTriangle, Lightbulb } from 'lucide-react'
 import { useFinancial } from '@/context/financial-context'
 import { NewCategoryModal } from '@/components/new-category-modal'
@@ -9,6 +9,144 @@ import { ProtectedRoute } from '@/components/protected-route'
 export default function OrcamentoPage() {
   const [showNewCategoryModal, setShowNewCategoryModal] = useState(false)
   const { transactions, categories } = useFinancial()
+
+  // Sistema de dicas diárias - baseado no dia do ano
+  const dicasFinanceiras = [
+    {
+      titulo: "📊 Controle Diário",
+      descricao: "Registre todas as suas transações diariamente para ter uma visão precisa dos seus gastos e tomar decisões mais assertivas."
+    },
+    {
+      titulo: "💰 Regra 50-30-20",
+      descricao: "50% para necessidades essenciais, 30% para desejos pessoais e 20% para poupança e investimentos. Uma fórmula comprovada!"
+    },
+    {
+      titulo: "🎯 Metas Realistas",
+      descricao: "Defina orçamentos realistas baseados no seu histórico de gastos dos últimos 3 meses. Seja honesto com seus padrões de consumo."
+    },
+    {
+      titulo: "📱 Revisão Semanal",
+      descricao: "Dedique 15 minutos semanais para revisar seu orçamento. Pequenos ajustes regulares evitam grandes problemas futuros."
+    },
+    {
+      titulo: "🏦 Reserva de Emergência",
+      descricao: "Mantenha de 3 a 6 meses de gastos essenciais em uma conta separada. Sua segurança financeira vale mais que qualquer investimento."
+    },
+    {
+      titulo: "💳 Cartão Consciente",
+      descricao: "Use o cartão de crédito como ferramenta, não como extensão da renda. Pague sempre o valor total da fatura."
+    },
+    {
+      titulo: "📈 Invista em Conhecimento",
+      descricao: "Dedique 30 minutos semanais estudando sobre finanças. O conhecimento é o melhor investimento com retorno garantido."
+    },
+    {
+      titulo: "🔄 Automatize Poupanças",
+      descricao: "Configure transferências automáticas para poupança logo após receber o salário. Pague-se primeiro, sempre!"
+    },
+    {
+      titulo: "🛒 Lista de Compras",
+      descricao: "Faça uma lista antes de ir às compras e estabeleça um limite de gastos. Evite compras por impulso que destroem orçamentos."
+    },
+    {
+      titulo: "📊 Compare Preços",
+      descricao: "Pesquise preços antes de grandes compras. Apps de comparação podem economizar centenas de reais em eletrodomésticos."
+    },
+    {
+      titulo: "💡 Renda Extra",
+      descricao: "Considere fontes de renda complementar: freelances, vendas online ou serviços. Diversificar a renda traz mais segurança."
+    },
+    {
+      titulo: "🎯 Objetivos Claros",
+      descricao: "Defina metas financeiras específicas com prazos: viagem em 6 meses, carro em 2 anos. Objetivos claros motivam mais."
+    },
+    {
+      titulo: "📱 Apps Financeiros",
+      descricao: "Use aplicativos para acompanhar gastos, investimentos e metas. A tecnologia pode ser sua aliada na organização financeira."
+    },
+    {
+      titulo: "🏠 Gastos Domésticos",
+      descricao: "Monitore contas de água, luz e gás. Pequenas mudanças de hábito podem reduzir significativamente essas despesas mensais."
+    },
+    {
+      titulo: "🍕 Delivery Consciente",
+      descricao: "Limite pedidos de delivery a 2-3 vezes por semana. Cozinhar em casa economiza em média R$ 800/mês para uma família."
+    },
+    {
+      titulo: "🚗 Transporte Inteligente",
+      descricao: "Compare custos entre uber, transporte público e carro próprio. Às vezes o transporte público é mais econômico que manter um carro."
+    },
+    {
+      titulo: "📚 Educação Financeira",
+      descricao: "Leia um livro sobre finanças por trimestre. Livros como 'Pai Rico, Pai Pobre' podem mudar sua perspectiva sobre dinheiro."
+    },
+    {
+      titulo: "💼 Seguro e Previdência",
+      descricao: "Avalie seguros e previdência privada. Proteção financeira é tão importante quanto acumulação de patrimônio."
+    },
+    {
+      titulo: "🎉 Premiações Pessoais",
+      descricao: "Defina pequenas recompensas ao atingir metas de economia. Celebrar conquistas mantém você motivado no longo prazo."
+    },
+    {
+      titulo: "📊 Planilhas Simples",
+      descricao: "Mantenha planilhas simples de controle. Complicar demais pode fazer você desistir do controle financeiro."
+    },
+    {
+      titulo: "💰 Dinheiro Físico",
+      descricao: "Use dinheiro físico para gastos variáveis como lazer e alimentação. Você gasta menos quando vê o dinheiro saindo da carteira."
+    },
+    {
+      titulo: "🔍 Análise Mensal",
+      descricao: "Todo início de mês, analise onde gastou mais no mês anterior. Identificar padrões ajuda a tomar decisões melhores."
+    },
+    {
+      titulo: "🎯 Método Envelope",
+      descricao: "Separe dinheiro em 'envelopes' para cada categoria de gasto. Quando o envelope esvaziar, você atingiu o limite daquela categoria."
+    },
+    {
+      titulo: "💳 Cashback Inteligente",
+      descricao: "Use cartões com cashback apenas em categorias que você já gasta naturalmente. Não gaste mais só para ganhar cashback."
+    },
+    {
+      titulo: "📱 Notificações Financeiras",
+      descricao: "Configure alertas para acompanhar gastos em tempo real. A consciência imediata dos gastos evita surpresas no fim do mês."
+    },
+    {
+      titulo: "🏆 Desafio 52 Semanas",
+      descricao: "Poupe R$ 1 na primeira semana, R$ 2 na segunda... até R$ 52 na última. Você terá R$ 1.378 no final do ano!"
+    },
+    {
+      titulo: "🎯 Regra das 24 Horas",
+      descricao: "Para compras acima de R$ 200, espere 24 horas antes de decidir. Você se surpreenderá com quantas compras desnecessárias evitará."
+    },
+    {
+      titulo: "💡 Energia e Água",
+      descricao: "Pequenas mudanças como banhos mais curtos e lâmpadas LED podem economizar R$ 100-200 mensais na conta de energia."
+    },
+    {
+      titulo: "📊 Proporção de Gastos",
+      descricao: "Alimentação deve representar máximo 25% da renda, moradia 30%, transporte 15%. Use essas proporções como guia."
+    },
+    {
+      titulo: "🎯 Metas SMART",
+      descricao: "Metas Específicas, Mensuráveis, Atingíveis, Relevantes e Temporais. 'Quero poupar R$ 5.000 em 10 meses' é melhor que 'quero poupar'."
+    },
+    {
+      titulo: "💰 Arredondamento",
+      descricao: "Arredonde gastos para cima em seus controles. Se gastou R$ 47,30, anote R$ 50. O extra vira uma reserva natural."
+    }
+  ]
+
+  // Seleciona a dica baseada no dia do ano
+  const dicaDoDia = useMemo(() => {
+    const hoje = new Date()
+    const inicioAno = new Date(hoje.getFullYear(), 0, 1)
+    const diferencaEmMs = hoje.getTime() - inicioAno.getTime()
+    const diaDaAno = Math.floor(diferencaEmMs / (1000 * 60 * 60 * 24))
+    const indiceDica = diaDaAno % dicasFinanceiras.length
+    return dicasFinanceiras[indiceDica]
+  }, [])
 
   // Gerar orçamentos baseados nas categorias existentes
   const orcamentosAtualizados = categories
@@ -65,6 +203,31 @@ export default function OrcamentoPage() {
             <Plus className="h-4 w-4" />
             <span>Definir Orçamento</span>
           </button>
+        </div>
+
+        {/* Dica do Dia - Movida para o topo */}
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200 p-6">
+          <div className="flex items-center space-x-3 mb-4">
+            <Lightbulb className="h-6 w-6 text-blue-600" />
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">💡 Dica Financeira do Dia</h3>
+              <p className="text-sm text-gray-600">
+                {new Date().toLocaleDateString('pt-BR', { 
+                  weekday: 'long', 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                })}
+              </p>
+            </div>
+          </div>
+          <div className="bg-white rounded-lg p-4 border border-blue-100 shadow-sm">
+            <h4 className="font-semibold text-gray-900 mb-2 text-lg">{dicaDoDia.titulo}</h4>
+            <p className="text-gray-700 leading-relaxed">{dicaDoDia.descricao}</p>
+          </div>
+          <div className="mt-3 text-xs text-gray-500 text-center">
+            💡 Uma nova dica aparece a cada dia para te ajudar na jornada financeira!
+          </div>
         </div>
 
         {/* Resumo Geral */}
@@ -184,40 +347,6 @@ export default function OrcamentoPage() {
             </button>
           </div>
         )}
-
-        {/* Dicas Financeiras */}
-        <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200 p-6">
-          <div className="flex items-center space-x-3 mb-4">
-            <Lightbulb className="h-6 w-6 text-blue-600" />
-            <h3 className="text-lg font-semibold text-gray-900">Dicas para Melhorar seu Orçamento</h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-white rounded-lg p-4 border">
-              <h4 className="font-medium text-gray-900 mb-2">📊 Controle Diário</h4>
-              <p className="text-sm text-gray-600">
-                Registre todas as suas transações diariamente para ter uma visão precisa dos seus gastos.
-              </p>
-            </div>
-            <div className="bg-white rounded-lg p-4 border">
-              <h4 className="font-medium text-gray-900 mb-2">💰 Regra 50-30-20</h4>
-              <p className="text-sm text-gray-600">
-                50% para necessidades, 30% para desejos e 20% para poupança e investimentos.
-              </p>
-            </div>
-            <div className="bg-white rounded-lg p-4 border">
-              <h4 className="font-medium text-gray-900 mb-2">🎯 Metas Realistas</h4>
-              <p className="text-sm text-gray-600">
-                Defina orçamentos realistas baseados no seu histórico de gastos dos últimos meses.
-              </p>
-            </div>
-            <div className="bg-white rounded-lg p-4 border">
-              <h4 className="font-medium text-gray-900 mb-2">📱 Revisão Semanal</h4>
-              <p className="text-sm text-gray-600">
-                Revise seu orçamento semanalmente para fazer ajustes necessários e manter o controle.
-              </p>
-            </div>
-          </div>
-        </div>
 
         {/* Modal de Nova Categoria */}
         <NewCategoryModal
