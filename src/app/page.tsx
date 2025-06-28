@@ -367,9 +367,9 @@ export default function LandingPage() {
                   <a href="#benefits" className="text-blue-100 hover:text-white transition-all duration-300 hover:scale-105 transform">
                     Benefícios
                   </a>
-                  <a href="#about" className="text-blue-100 hover:text-white transition-all duration-300 hover:scale-105 transform">
+                  <Link href="/sobre" className="text-blue-100 hover:text-white transition-all duration-300 hover:scale-105 transform">
                     Sobre
-                  </a>
+                  </Link>
                   <Link 
                     href="/cadastro"
                     className="bg-white text-blue-600 px-6 py-2 rounded-lg font-medium hover:bg-blue-50 transition-all duration-300 transform hover:scale-105 hover:shadow-lg"
@@ -399,9 +399,9 @@ export default function LandingPage() {
                 <a href="#benefits" className="block text-gray-700 hover:text-blue-600 transition-colors">
                   Benefícios
                 </a>
-                <a href="#about" className="block text-gray-700 hover:text-blue-600 transition-colors">
+                <Link href="/sobre" className="block text-gray-700 hover:text-blue-600 transition-colors">
                   Sobre
-                </a>
+                </Link>
                 <Link 
                   href="/cadastro"
                   className="block bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-lg font-medium text-center transform hover:scale-105 transition-all duration-300"
@@ -728,7 +728,7 @@ export default function LandingPage() {
               <div className="animate-slide-in-bottom delay-400">
                 <h3 className="font-semibold text-lg mb-4">Suporte</h3>
                 <ul className="space-y-3 text-gray-400">
-                  <li><a href="#about" className="hover:text-white transition-colors transform hover:translate-x-1 duration-300 inline-block">Sobre</a></li>
+                  <li><Link href="/sobre" className="hover:text-white transition-colors transform hover:translate-x-1 duration-300 inline-block">Sobre</Link></li>
                   <li><a href="#features" className="hover:text-white transition-colors transform hover:translate-x-1 duration-300 inline-block">Funcionalidades</a></li>
                   <li><a href="#benefits" className="hover:text-white transition-colors transform hover:translate-x-1 duration-300 inline-block">Benefícios</a></li>
                   <li><a href="mailto:contato@financepro.com" className="hover:text-white transition-colors transform hover:translate-x-1 duration-300 inline-block">Contato</a></li>
