@@ -3,7 +3,6 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { FinancialProvider } from '@/context/financial-context';
 import { AuthProvider } from '@/context/auth-context';
-import { CacheProvider } from '@/context/cache-context';
 import { ConditionalNavigation } from '@/components/conditional-navigation';
 import { AIAssistantWrapper } from '@/components/ai-assistant-wrapper';
 
@@ -390,16 +389,14 @@ export default function RootLayout({
         }} />
       </head>
       <body className={inter.className}>
-        <CacheProvider>
-          <AuthProvider>
-            <FinancialProvider>
-              <ConditionalNavigation>
-                {children}
-              </ConditionalNavigation>
-              <AIAssistantWrapper />
-            </FinancialProvider>
-          </AuthProvider>
-        </CacheProvider>
+        <AuthProvider>
+          <FinancialProvider>
+            <ConditionalNavigation>
+              {children}
+            </ConditionalNavigation>
+            <AIAssistantWrapper />
+          </FinancialProvider>
+        </AuthProvider>
       </body>
     </html>
   );
