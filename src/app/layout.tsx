@@ -256,6 +256,67 @@ export default function RootLayout({
           `
         }} />
         
+        {/* Script para desregistrar Service Worker */}
+        <script dangerouslySetInnerHTML={{
+          __html: `
+            // Desregistro completo do Service Worker
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                if (registrations.length > 0) {
+                  console.log('🧹 Encontrados ' + registrations.length + ' Service Workers registrados')
+                  
+                  // Registra o SW de limpeza
+                  navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(function(registration) {
+                    console.log('🧹 Service Worker de limpeza registrado')
+                    
+                    // Escuta mensagens do SW
+                    navigator.serviceWorker.addEventListener('message', function(event) {
+                      if (event.data && event.data.type === 'CLEANUP_COMPLETE') {
+                        console.log('🧹 Limpeza concluída:', event.data.message)
+                        
+                        // Desregistra todos os SWs após um delay
+                        setTimeout(function() {
+                          navigator.serviceWorker.getRegistrations().then(function(regs) {
+                            regs.forEach(function(registration) {
+                              registration.unregister().then(function() {
+                                console.log('🧹 Service Worker desregistrado com sucesso!')
+                              })
+                            })
+                            
+                            // Limpa todos os caches manualmente também
+                            if ('caches' in window) {
+                              caches.keys().then(function(cacheNames) {
+                                return Promise.all(
+                                  cacheNames.map(function(cacheName) {
+                                    console.log('🧹 Removendo cache:', cacheName)
+                                    return caches.delete(cacheName)
+                                  })
+                                )
+                              }).then(function() {
+                                console.log('🧹 Todos os caches removidos!')
+                                
+                                // Remove o arquivo sw.js do servidor
+                                setTimeout(function() {
+                                  console.log('🧹 Limpeza completa! Recarregando página...')
+                                  window.location.reload()
+                                }, 2000)
+                              })
+                            }
+                          })
+                        }, 1000)
+                      }
+                    })
+                  }).catch(function(error) {
+                    console.error('🧹 Erro ao registrar SW de limpeza:', error)
+                  })
+                } else {
+                  console.log('✅ Nenhum Service Worker encontrado')
+                }
+              })
+            }
+          `
+        }} />
+        
         {/* JavaScript para interceptar eventos de zoom */}
         <script dangerouslySetInnerHTML={{
           __html: `
