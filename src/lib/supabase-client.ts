@@ -168,6 +168,11 @@ export const signUp = async (email: string, password: string, name: string, user
   const redirectUrl = getRedirectUrl()
   console.log('🔗 URL de redirecionamento para confirmação:', redirectUrl)
 
+  // Armazenar o nome do usuário para usar na página de boas-vindas
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('welcomeUserName', name)
+  }
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -182,6 +187,10 @@ export const signUp = async (email: string, password: string, name: string, user
   
   if (error) {
     console.error('Error signing up:', error)
+    // Limpar o nome se deu erro
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('welcomeUserName')
+    }
     return { user: null, error }
   }
 

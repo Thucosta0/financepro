@@ -66,11 +66,11 @@ export default function ConfirmEmailContent() {
         } else {
           console.log('Email confirmado com sucesso!')
           setStatus('success')
-          setMessage('Email confirmado com sucesso! Sua conta está ativa. Redirecionando para o login...')
+          setMessage('Email confirmado com sucesso! Sua conta está ativa. Redirecionando para boas-vindas...')
           
-          // Redirecionar para login após 3 segundos
+          // Redirecionar para página de boas-vindas após 3 segundos
           setTimeout(() => {
-            router.push('/login?confirmed=true')
+            router.push('/bem-vindo')
           }, 3000)
         }
       } catch (error) {
@@ -151,10 +151,10 @@ export default function ConfirmEmailContent() {
               </div>
               
               <Link
-                href="/login"
+                href="/bem-vindo"
                 className="block w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-200 text-center"
               >
-                Ir para o login
+                Continuar para Boas-vindas
               </Link>
             </div>
           )}

@@ -34,6 +34,10 @@
     {
       "source": "/reset-password", 
       "destination": "/reset-password"
+    },
+    {
+      "source": "/bem-vindo",
+      "destination": "/bem-vindo"
     }
   ]
 } 
