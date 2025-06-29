@@ -1,23 +1,51 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Repeat, TrendingUp, TrendingDown, DollarSign, Activity } from 'lucide-react'
+import { Plus, Repeat, TrendingUp, TrendingDown, DollarSign, Activity, PieChart, BarChart3, Calendar, Target } from 'lucide-react'
 import { useFinancial } from '@/context/financial-context'
 import { NewTransactionModal } from '@/components/new-transaction-modal'
 import { RecurringTransactionModal } from '@/components/recurring-transaction-modal'
 import { TransactionPrerequisitesGuide } from '@/components/transaction-prerequisites-guide'
 import { useTransactionPrerequisites } from '@/hooks/use-transaction-prerequisites'
 import { ProtectedRoute } from '@/components/protected-route'
+import { 
+  ExpenseByCategoryChart, 
+  IncomeVsExpenseChart, 
+  BalanceEvolutionChart, 
+  TopCategoriesChart, 
+  WeeklySpendingChart 
+} from '@/components/dashboard/charts'
+import { Overview } from '@/components/dashboard/overview'
 
 export default function DashboardPage() {
   const [showNewTransactionModal, setShowNewTransactionModal] = useState(false)
   const [showRecurringModal, setShowRecurringModal] = useState(false)
   const [showPrerequisitesGuide, setShowPrerequisitesGuide] = useState(false)
+  const [activeChart, setActiveChart] = useState('overview')
   
   const { transactions, cards, categories, getFinancialSummary } = useFinancial()
   const { canCreateTransaction } = useTransactionPrerequisites()
   
   const { receitas, despesas, saldo } = getFinancialSummary()
+
+  // Calcular dados para o mês anterior (para comparação)
+  const currentMonth = new Date().getMonth()
+  const currentYear = new Date().getFullYear()
+  const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1
+  const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear
+
+  const lastMonthTransactions = transactions.filter(t => {
+    const transactionDate = new Date(t.transaction_date)
+    return transactionDate.getMonth() === lastMonth && transactionDate.getFullYear() === lastMonthYear
+  })
+
+  const lastMonthReceitas = lastMonthTransactions
+    .filter(t => t.type === 'income')
+    .reduce((sum, t) => sum + t.amount, 0)
+  const lastMonthDespesas = lastMonthTransactions
+    .filter(t => t.type === 'expense')
+    .reduce((sum, t) => sum + t.amount, 0)
+  const lastMonthSaldo = lastMonthReceitas - lastMonthDespesas
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -62,6 +90,15 @@ export default function DashboardPage() {
   // Últimas transações para mostrar no dashboard
   const recentTransactions = transactions
     .sort((a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime())
+
+  // Configuração das abas de gráficos
+  const chartTabs = [
+    { id: 'overview', label: 'Visão Geral', icon: BarChart3 },
+    { id: 'categories', label: 'Por Categoria', icon: PieChart },
+    { id: 'evolution', label: 'Evolução', icon: TrendingUp },
+    { id: 'weekly', label: 'Semanal', icon: Calendar },
+    { id: 'top', label: 'Top Categorias', icon: Target }
+  ]
 
   return (
     <ProtectedRoute>
@@ -147,6 +184,82 @@ export default function DashboardPage() {
                   <p className="text-2xl font-bold text-gray-900">{transactions.length}</p>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Overview Avançado */}
+          <div className="bg-white rounded-xl shadow-sm border p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Visão Geral Detalhada</h2>
+            <Overview 
+              totalIncome={receitas}
+              totalExpenses={despesas}
+              balance={saldo}
+              previousMonthBalance={lastMonthSaldo}
+            />
+          </div>
+
+          {/* Seção de Gráficos Avançados */}
+          <div className="bg-white rounded-xl shadow-sm border">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+                <h2 className="text-xl font-semibold text-gray-900">📊 Análise Visual Avançada</h2>
+                <div className="flex flex-wrap gap-2">
+                  {chartTabs.map((tab) => {
+                    const Icon = tab.icon
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => setActiveChart(tab.id)}
+                        className={`inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                          activeChart === tab.id
+                            ? 'bg-blue-100 text-blue-700 border border-blue-200 transform scale-105'
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        }`}
+                      >
+                        <Icon className="h-4 w-4 mr-2" />
+                        {tab.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              {activeChart === 'overview' && (
+                <div>
+                  <h3 className="text-lg font-medium mb-4 text-gray-900">Receitas vs Despesas por Mês</h3>
+                  <IncomeVsExpenseChart transactions={transactions} />
+                </div>
+              )}
+              
+              {activeChart === 'categories' && (
+                <div>
+                  <h3 className="text-lg font-medium mb-4 text-gray-900">Distribuição de Despesas por Categoria</h3>
+                  <ExpenseByCategoryChart transactions={transactions} />
+                </div>
+              )}
+              
+              {activeChart === 'evolution' && (
+                <div>
+                  <h3 className="text-lg font-medium mb-4 text-gray-900">Evolução do Saldo</h3>
+                  <BalanceEvolutionChart transactions={transactions} />
+                </div>
+              )}
+              
+              {activeChart === 'weekly' && (
+                <div>
+                  <h3 className="text-lg font-medium mb-4 text-gray-900">Movimentação dos Últimos 7 Dias</h3>
+                  <WeeklySpendingChart transactions={transactions} />
+                </div>
+              )}
+              
+              {activeChart === 'top' && (
+                <div>
+                  <h3 className="text-lg font-medium mb-4 text-gray-900">Top 5 Categorias de Despesa</h3>
+                  <TopCategoriesChart transactions={transactions} />
+                </div>
+              )}
             </div>
           </div>
 
