@@ -109,7 +109,7 @@ export default function ConfirmEmailContent() {
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <h3 className="text-sm font-medium text-green-800 mb-2">✅ Próximos passos:</h3>
                 <ul className="text-xs text-green-700 space-y-1">
-                  <li>• Sua conta está agora ativa</li>
+                  <li>• Sua conta foi ativada com sucesso</li>
                   <li>• Você será redirecionado automaticamente</li>
                   <li>• Aproveite todas as funcionalidades do FinancePRO</li>
                 </ul>
