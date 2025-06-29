@@ -2,18 +2,19 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { CreditCard, Receipt, Target, Menu, X, Layers, Repeat, BarChart3, Wallet, LogOut, User } from 'lucide-react'
+import { CreditCard, Receipt, Target, Menu, X, Layers, Repeat, BarChart3, Wallet, LogOut, User, DollarSign, Home, PieChart, Folder, Crown } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/context/auth-context'
 import { supabase } from '@/lib/supabase-client'
 
-const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
+const menuItems = [
+  { name: 'Dashboard', href: '/dashboard', icon: Home },
   { name: 'Transações', href: '/transacoes', icon: Receipt },
   { name: 'Transações Fixas', href: '/transacoes-fixas', icon: Repeat },
-  { name: 'Categorias', href: '/categorias', icon: Layers },
-  { name: 'Cartões', href: '/cartoes', icon: Wallet },
-  { name: 'Orçamento', href: '/orcamento', icon: Target },
+  { name: 'Categorias', href: '/categorias', icon: Folder },
+  { name: 'Cartões', href: '/cartoes', icon: CreditCard },
+  { name: 'Orçamento', href: '/orcamento', icon: PieChart },
+  { name: 'Planos', href: '/planos', icon: Crown },
 ]
 
 interface UserProfile {
@@ -136,7 +137,7 @@ export function Navigation() {
 
         {/* Navigation */}
         <nav className="mt-4 px-4 space-y-2 flex-1">
-          {navigation.map((item) => {
+          {menuItems.map((item) => {
             const isActive = pathname === item.href
             return (
               <Link
@@ -249,7 +250,7 @@ export function Navigation() {
 
           {/* Navigation */}
           <nav className="mt-6 px-4 space-y-2 flex-1">
-            {navigation.map((item) => {
+            {menuItems.map((item) => {
               const isActive = pathname === item.href
               return (
                 <Link

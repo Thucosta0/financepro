@@ -17,8 +17,8 @@ BEGIN
         NEW.email
     );
     
-    -- Cria as categorias padrão
-    PERFORM public.create_default_categories(NEW.id);
+    -- Não criar categorias automáticas - conta limpa
+    -- PERFORM public.create_default_categories(NEW.id);
     
     RETURN NEW;
 END;

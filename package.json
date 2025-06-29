@@ -6,9 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "stripe:listen": "stripe listen --forward-to localhost:3000/api/stripe/webhook",
+    "stripe:products": "echo 'Crie os produtos no Stripe Dashboard: https://dashboard.stripe.com/products'"
   },
   "dependencies": {
+    "@stripe/stripe-js": "^7.4.0",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.50.2",
     "clsx": "^2.1.1",
@@ -19,6 +22,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "recharts": "^3.0.2",
+    "stripe": "^18.2.1",
     "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {

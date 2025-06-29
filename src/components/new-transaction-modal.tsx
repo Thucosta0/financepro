@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
-import { X } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { X, AlertTriangle } from 'lucide-react'
 import { useFinancial } from '@/context/financial-context'
+import { useSubscription } from '@/hooks/use-subscription'
 
 interface NewTransactionModalProps {
   isOpen: boolean
@@ -11,6 +12,7 @@ interface NewTransactionModalProps {
 
 export function NewTransactionModal({ isOpen, onClose }: NewTransactionModalProps) {
   const { categories, cards, addTransaction } = useFinancial()
+  const { canPerformAction, isTrialExpired } = useSubscription()
   const [formData, setFormData] = useState({
     description: '',
     amount: '',
@@ -23,8 +25,29 @@ export function NewTransactionModal({ isOpen, onClose }: NewTransactionModalProp
   const activeCards = cards.filter(card => card.is_active)
   const filteredCategories = categories.filter(cat => cat.type === formData.type)
 
+  // Verificar trial expirado quando o modal abrir
+  useEffect(() => {
+    if (isOpen && isTrialExpired()) {
+      onClose()
+      window.location.href = '/planos'
+    }
+  }, [isOpen, isTrialExpired, onClose])
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Verificar novamente se o trial expirou antes de submeter
+    if (isTrialExpired()) {
+      onClose()
+      window.location.href = '/planos'
+      return
+    }
+    
+    // Verificar se pode executar a ação
+    if (!canPerformAction('transactions')) {
+      alert('Você não tem permissão para criar transações.')
+      return
+    }
     
     if (!formData.description || !formData.amount || !formData.category || !formData.card) {
       alert('Por favor, preencha todos os campos obrigatórios.')
@@ -61,6 +84,49 @@ export function NewTransactionModal({ isOpen, onClose }: NewTransactionModalProp
   }
 
   if (!isOpen) return null
+
+  // Se trial expirou, mostrar modal de bloqueio
+  if (isTrialExpired()) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="bg-white rounded-lg shadow-lg max-w-md w-full m-4 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-800">Nova Transação</h3>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          
+          <div className="text-center py-8">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle className="w-8 h-8 text-red-600" />
+            </div>
+            <h4 className="text-xl font-bold text-red-800 mb-2">Trial Expirado</h4>
+            <p className="text-gray-600 mb-6">
+              Seu trial de 30 dias expirou. Faça upgrade para continuar criando transações.
+            </p>
+            <div className="space-y-3">
+              <button 
+                onClick={() => {
+                  onClose()
+                  window.location.href = '/planos'
+                }}
+                className="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium"
+              >
+                Fazer Upgrade Agora
+              </button>
+              <button 
+                onClick={onClose}
+                className="w-full border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50"
+              >
+                Voltar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center bg-black bg-opacity-50">

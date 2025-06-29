@@ -1,14 +1,18 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Plus, AlertTriangle, Lightbulb } from 'lucide-react'
+import { Plus, AlertTriangle, Lightbulb, Edit2, Trash2 } from 'lucide-react'
 import { useFinancial } from '@/context/financial-context'
+import { useSubscription } from '@/hooks/use-subscription'
 import { NewCategoryModal } from '@/components/new-category-modal'
+import { BudgetModal } from '@/components/budget-modal'
 import { ProtectedRoute } from '@/components/protected-route'
 
 export default function OrcamentoPage() {
   const [showNewCategoryModal, setShowNewCategoryModal] = useState(false)
-  const { transactions, categories } = useFinancial()
+  const [showBudgetModal, setShowBudgetModal] = useState(false)
+  const { transactions, categories, budgets, deleteBudget } = useFinancial()
+  const { canPerformAction, isTrialExpired } = useSubscription()
 
   // Sistema de dicas diárias - baseado no dia do ano
   const dicasFinanceiras = [
@@ -148,24 +152,35 @@ export default function OrcamentoPage() {
     return dicasFinanceiras[indiceDica]
   }, [])
 
-  // Gerar orçamentos baseados nas categorias existentes
-  const orcamentosAtualizados = categories
-    .filter(c => c.type === 'expense')
-    .map(categoria => {
+  // Obter mês e ano atual
+  const mesAtual = new Date().getMonth() + 1
+  const anoAtual = new Date().getFullYear()
+
+  // Orçamentos para o mês atual
+  const orcamentosAtuais = budgets
+    .filter(b => b.month === mesAtual && b.year === anoAtual)
+    .map(budget => {
+      const categoria = categories.find(c => c.id === budget.category_id)
       const gastoReal = transactions
-        .filter(t => t.category_id === categoria.id && t.type === 'expense')
+        .filter(t => {
+          const transactionDate = new Date(t.transaction_date)
+          return t.category_id === budget.category_id && 
+                 t.type === 'expense' &&
+                 transactionDate.getMonth() + 1 === mesAtual &&
+                 transactionDate.getFullYear() === anoAtual
+        })
         .reduce((sum, t) => sum + t.amount, 0)
       
-      // Limite sugerido baseado no gasto atual ou valor padrão
-      const limiteSugerido = gastoReal > 0 ? Math.ceil(gastoReal * 1.2) : 500
-      
       return {
-        categoria: categoria.name,
-        limite: limiteSugerido,
+        id: budget.id,
+        categoria: categoria?.name || 'Categoria não encontrada',
+        categoriaIcon: categoria?.icon || '❓',
+        limite: budget.budget_limit,
         gasto: gastoReal,
-        cor: categoria.color
+        cor: categoria?.color || '#666'
       }
     })
+    .sort((a, b) => a.categoria.localeCompare(b.categoria))
 
   const formatarValor = (valor: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -186,24 +201,112 @@ export default function OrcamentoPage() {
     return '✅'
   }
 
-  const totalOrcamento = orcamentosAtualizados.reduce((sum, o) => sum + o.limite, 0)
-  const totalGasto = orcamentosAtualizados.reduce((sum, o) => sum + o.gasto, 0)
+  const totalOrcamento = orcamentosAtuais.reduce((sum, o) => sum + o.limite, 0)
+  const totalGasto = orcamentosAtuais.reduce((sum, o) => sum + o.gasto, 0)
   const percentualGeral = totalOrcamento > 0 ? (totalGasto / totalOrcamento) * 100 : 0
 
   const handleCreateCategory = () => {
+    if (isTrialExpired()) {
+      window.location.href = '/planos'
+      return
+    }
     setShowNewCategoryModal(true)
+  }
+
+  const handleDefinirOrcamento = () => {
+    if (isTrialExpired()) {
+      window.location.href = '/planos'
+      return
+    }
+    setShowBudgetModal(true)
+  }
+
+  const handleDeleteBudget = async (budgetId: string, categoryName: string) => {
+    if (isTrialExpired()) {
+      window.location.href = '/planos'
+      return
+    }
+
+    if (confirm(`Tem certeza que deseja excluir o orçamento de "${categoryName}"?`)) {
+      try {
+        await deleteBudget(budgetId)
+      } catch (error) {
+        console.error('Erro ao excluir orçamento:', error)
+        alert('Erro ao excluir orçamento. Tente novamente.')
+      }
+    }
+  }
+
+  // Função para obter props do botão baseado no status
+  const getButtonProps = () => {
+    if (isTrialExpired()) {
+      return {
+        text: 'Trial Expirado - Renovar',
+        className: 'bg-red-600 text-white hover:bg-red-700 animate-pulse',
+        icon: AlertTriangle,
+        title: 'Seu trial expirou. Clique para renovar.'
+      }
+    }
+    
+    return {
+      text: 'Definir Orçamento',
+      className: 'bg-blue-600 text-white hover:bg-blue-700 transition-colors',
+      icon: Plus,
+      title: 'Definir novo orçamento'
+    }
+  }
+
+  const buttonProps = getButtonProps()
+  const ButtonIcon = buttonProps.icon
+
+  const formatarMes = (mes: number) => {
+    const meses = [
+      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    ]
+    return meses[mes - 1]
   }
 
   return (
     <ProtectedRoute>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-gray-900">Orçamento</h1>
-          <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2">
-            <Plus className="h-4 w-4" />
-            <span>Definir Orçamento</span>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Orçamento</h1>
+            <p className="text-gray-600 mt-1">{formatarMes(mesAtual)} de {anoAtual}</p>
+          </div>
+          <button 
+            onClick={handleDefinirOrcamento}
+            className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${buttonProps.className}`}
+            title={buttonProps.title}
+          >
+            <ButtonIcon className="h-4 w-4" />
+            <span>{buttonProps.text}</span>
           </button>
         </div>
+
+        {/* Alert de trial expirado */}
+        {isTrialExpired() && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-center">
+              <div className="text-red-600 mr-3">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-medium text-red-800">Trial de 30 dias expirado</h3>
+                <p className="text-sm text-red-700 mt-1">
+                  Seu trial completo acabou. Faça upgrade para continuar criando e gerenciando orçamentos.
+                </p>
+              </div>
+              <button
+                onClick={() => window.location.href = '/planos'}
+                className="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700 transition-colors font-medium"
+              >
+                Renovar Agora
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Dica do Dia - Movida para o topo */}
         <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200 p-6">
@@ -275,22 +378,22 @@ export default function OrcamentoPage() {
         </div>
 
         {/* Orçamentos por Categoria */}
-        {orcamentosAtualizados.length > 0 ? (
+        {orcamentosAtuais.length > 0 ? (
           <div className="bg-white rounded-lg shadow-sm border">
             <div className="p-6 border-b">
-              <h3 className="text-lg font-semibold">Orçamentos por Categoria</h3>
+              <h3 className="text-lg font-semibold">Orçamentos - {formatarMes(mesAtual)} {anoAtual}</h3>
             </div>
             <div className="p-6">
               <div className="space-y-6">
-                {orcamentosAtualizados.map((orcamento) => {
+                {orcamentosAtuais.map((orcamento) => {
                   const percentual = orcamento.limite > 0 ? (orcamento.gasto / orcamento.limite) * 100 : 0
                   const restante = orcamento.limite - orcamento.gasto
 
                   return (
-                    <div key={orcamento.categoria} className="border rounded-lg p-4">
+                    <div key={orcamento.id} className="border rounded-lg p-4">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center space-x-3">
-                          <div className="text-xl">{obterIconeStatus(percentual)}</div>
+                          <div className="text-xl">{orcamento.categoriaIcon}</div>
                           <div>
                             <h4 className="font-semibold text-gray-900">{orcamento.categoria}</h4>
                             <p className="text-sm text-gray-600">
@@ -298,11 +401,25 @@ export default function OrcamentoPage() {
                             </p>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className={`font-semibold ${restante >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {restante >= 0 ? 'Restam' : 'Excedeu'} {formatarValor(Math.abs(restante))}
-                          </p>
-                          <p className="text-sm text-gray-600">{percentual.toFixed(1)}% usado</p>
+                        <div className="flex items-center space-x-2">
+                          <div className="text-right mr-4">
+                            <p className={`font-semibold ${restante >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {restante >= 0 ? 'Restam' : 'Excedeu'} {formatarValor(Math.abs(restante))}
+                            </p>
+                            <p className="text-sm text-gray-600">{percentual.toFixed(1)}% usado</p>
+                          </div>
+                          <button 
+                            onClick={() => handleDeleteBudget(orcamento.id, orcamento.categoria)}
+                            className={`p-2 rounded-lg transition-colors ${
+                              isTrialExpired() 
+                                ? 'text-gray-400 cursor-not-allowed' 
+                                : 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                            }`}
+                            title={isTrialExpired() ? 'Trial expirado' : 'Excluir orçamento'}
+                            disabled={isTrialExpired()}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         </div>
                       </div>
 
@@ -335,15 +452,25 @@ export default function OrcamentoPage() {
         ) : (
           <div className="bg-white rounded-lg shadow-sm border p-12 text-center">
             <div className="text-gray-400 text-6xl mb-4">🎯</div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum orçamento definido</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              {categories.filter(c => c.type === 'expense').length === 0 
+                ? 'Nenhuma categoria de despesa cadastrada' 
+                : 'Nenhum orçamento definido para este mês'
+              }
+            </h3>
             <p className="text-gray-600 mb-4">
-              Primeiro cadastre algumas categorias de despesas para poder definir orçamentos.
+              {categories.filter(c => c.type === 'expense').length === 0 
+                ? 'Primeiro cadastre algumas categorias de despesas para poder definir orçamentos.'
+                : `Defina orçamentos para suas categorias em ${formatarMes(mesAtual)} de ${anoAtual}.`
+              }
             </p>
             <button 
-              onClick={handleCreateCategory}
+              onClick={categories.filter(c => c.type === 'expense').length === 0 ? handleCreateCategory : handleDefinirOrcamento}
               className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
             >
-              Criar Primeira Categoria
+              {isTrialExpired() ? 'Renovar para Criar' : 
+                categories.filter(c => c.type === 'expense').length === 0 ? 'Criar Primeira Categoria' : 'Definir Primeiro Orçamento'
+              }
             </button>
           </div>
         )}
@@ -352,6 +479,12 @@ export default function OrcamentoPage() {
         <NewCategoryModal
           isOpen={showNewCategoryModal}
           onClose={() => setShowNewCategoryModal(false)}
+        />
+
+        {/* Modal de Orçamento */}
+        <BudgetModal
+          isOpen={showBudgetModal}
+          onClose={() => setShowBudgetModal(false)}
         />
       </div>
     </ProtectedRoute>

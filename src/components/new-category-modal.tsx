@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 import { useFinancial } from '@/context/financial-context'
+import { useSubscription } from '@/hooks/use-subscription'
 import type { Category } from '@/lib/supabase-client'
 
 interface NewCategoryModalProps {
@@ -23,12 +24,22 @@ const categoryColors = [
 
 export function NewCategoryModal({ isOpen, onClose, editingCategory }: NewCategoryModalProps) {
   const { addCategory, updateCategory } = useFinancial()
+  const { isTrialExpired } = useSubscription()
   const [formData, setFormData] = useState({
     name: '',
     type: 'expense' as 'income' | 'expense',
     icon: '💰',
     color: '#22c55e'
   })
+
+  // Verificar trial expirado ao abrir modal
+  useEffect(() => {
+    if (isOpen && isTrialExpired()) {
+      onClose()
+      window.location.href = '/planos'
+      return
+    }
+  }, [isOpen, isTrialExpired, onClose])
 
   // Carregar dados quando editando
   useEffect(() => {
@@ -52,6 +63,11 @@ export function NewCategoryModal({ isOpen, onClose, editingCategory }: NewCatego
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (isTrialExpired()) {
+      window.location.href = '/planos'
+      return
+    }
     
     if (!formData.name.trim()) {
       alert('Por favor, digite o nome da categoria.')

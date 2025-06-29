@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Edit2, Trash2, Eye, EyeOff, Search, X } from 'lucide-react'
+import { Plus, Edit2, Trash2, Eye, EyeOff, Search, X, AlertTriangle } from 'lucide-react'
 import { useFinancial } from '@/context/financial-context'
+import { useSubscription } from '@/hooks/use-subscription'
 import { ProtectedRoute } from '@/components/protected-route'
 
 export default function CartoesPage() {
@@ -11,6 +12,7 @@ export default function CartoesPage() {
   const [showModal, setShowModal] = useState(false)
   const [editingCard, setEditingCard] = useState<string | null>(null)
   const { cards, updateCard, deleteCard, transactions } = useFinancial()
+  const { canPerformAction, isTrialExpired } = useSubscription()
 
   const getCardSummary = (cardId: string) => {
     const cardTransactions = transactions.filter(t => t.card_id === cardId)
@@ -52,19 +54,97 @@ export default function CartoesPage() {
     return icons[type as keyof typeof icons] || '💳'
   }
 
+  const handleNewCard = () => {
+    if (isTrialExpired()) {
+      window.location.href = '/planos'
+      return
+    }
+    setShowModal(true)
+  }
+
+  const handleEditCard = (cardId: string) => {
+    if (isTrialExpired()) {
+      window.location.href = '/planos'
+      return
+    }
+    setEditingCard(cardId)
+  }
+
+  const handleDeleteCard = (cardId: string) => {
+    if (isTrialExpired()) {
+      window.location.href = '/planos'
+      return
+    }
+    deleteCard(cardId)
+  }
+
+  const handleUpdateCard = (cardId: string, updates: any) => {
+    if (isTrialExpired()) {
+      window.location.href = '/planos'
+      return
+    }
+    updateCard(cardId, updates)
+  }
+
+  // Função para obter props do botão baseado no status
+  const getButtonProps = () => {
+    if (isTrialExpired()) {
+      return {
+        text: 'Trial Expirado - Renovar',
+        className: 'bg-red-600 text-white hover:bg-red-700 animate-pulse',
+        icon: AlertTriangle,
+        title: 'Seu trial expirou. Clique para renovar.'
+      }
+    }
+    
+    return {
+      text: 'Novo Cartão',
+      className: 'bg-blue-600 text-white hover:bg-blue-700 transition-colors',
+      icon: Plus,
+      title: 'Criar novo cartão'
+    }
+  }
+
+  const buttonProps = getButtonProps()
+  const ButtonIcon = buttonProps.icon
+
   return (
     <ProtectedRoute>
       <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900">Cartões</h1>
         <button 
-          onClick={() => setShowModal(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+          onClick={handleNewCard}
+          className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${buttonProps.className}`}
+          title={buttonProps.title}
         >
-          <Plus className="h-4 w-4" />
-          <span>Novo Cartão</span>
+          <ButtonIcon className="h-4 w-4" />
+          <span>{buttonProps.text}</span>
         </button>
       </div>
+
+      {/* Alert de trial expirado */}
+      {isTrialExpired() && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <div className="text-red-600 mr-3">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-medium text-red-800">Trial de 30 dias expirado</h3>
+              <p className="text-sm text-red-700 mt-1">
+                Seu trial completo acabou. Faça upgrade para continuar criando e gerenciando cartões.
+              </p>
+            </div>
+            <button
+              onClick={() => window.location.href = '/planos'}
+              className="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700 transition-colors font-medium"
+            >
+              Renovar Agora
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Filtros */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
@@ -161,8 +241,14 @@ export default function CartoesPage() {
                     </div>
                     <div className="flex items-center space-x-2">
                       <button
-                        onClick={() => updateCard(cartao.id, { is_active: !cartao.is_active })}
-                        className={`p-1 rounded ${cartao.is_active ? 'bg-white/20' : 'bg-red-500/20'}`}
+                        onClick={() => handleUpdateCard(cartao.id, { is_active: !cartao.is_active })}
+                        className={`p-1 rounded ${
+                          isTrialExpired() 
+                            ? 'bg-white/10 cursor-not-allowed' 
+                            : cartao.is_active ? 'bg-white/20' : 'bg-red-500/20'
+                        }`}
+                        disabled={isTrialExpired()}
+                        title={isTrialExpired() ? 'Trial expirado' : (cartao.is_active ? 'Desativar' : 'Ativar')}
                       >
                         {cartao.is_active ? 
                           <Eye className="h-4 w-4" /> : 
@@ -227,14 +313,26 @@ export default function CartoesPage() {
                     </span>
                     <div className="flex items-center space-x-2">
                       <button 
-                        onClick={() => setEditingCard(cartao.id)}
-                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        onClick={() => handleEditCard(cartao.id)}
+                        className={`p-2 rounded-lg transition-colors ${
+                          isTrialExpired() 
+                            ? 'text-gray-400 cursor-not-allowed' 
+                            : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'
+                        }`}
+                        disabled={isTrialExpired()}
+                        title={isTrialExpired() ? 'Trial expirado' : 'Editar cartão'}
                       >
                         <Edit2 className="h-4 w-4" />
                       </button>
                       <button 
-                        onClick={() => deleteCard(cartao.id)}
-                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        onClick={() => handleDeleteCard(cartao.id)}
+                        className={`p-2 rounded-lg transition-colors ${
+                          isTrialExpired() 
+                            ? 'text-gray-400 cursor-not-allowed' 
+                            : 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                        }`}
+                        disabled={isTrialExpired()}
+                        title={isTrialExpired() ? 'Trial expirado' : 'Excluir cartão'}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -256,10 +354,10 @@ export default function CartoesPage() {
             }
           </p>
           <button 
-            onClick={() => setShowModal(true)}
+            onClick={handleNewCard}
             className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
           >
-            Adicionar Primeiro Cartão
+            {isTrialExpired() ? 'Renovar para Criar' : 'Adicionar Primeiro Cartão'}
           </button>
         </div>
       )}
@@ -287,6 +385,7 @@ function CardModal({ isOpen, onClose, cardId }: {
   cardId?: string | null;
 }) {
   const { cards, addCard, updateCard } = useFinancial()
+  const { isTrialExpired } = useSubscription()
   const [formData, setFormData] = useState({
     name: '',
     type: 'credit' as 'credit' | 'debit' | 'cash',
@@ -313,6 +412,11 @@ function CardModal({ isOpen, onClose, cardId }: {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (isTrialExpired()) {
+      window.location.href = '/planos'
+      return
+    }
     
     const cardData = {
       name: formData.name,

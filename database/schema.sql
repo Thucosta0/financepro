@@ -280,18 +280,18 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- ===========================================
--- TRIGGER PARA CRIAR PERFIL E CATEGORIAS AUTOMATICAMENTE
+-- TRIGGER PARA CRIAR PERFIL AUTOMATICAMENTE (SEM CATEGORIAS)
 -- ===========================================
 
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-    -- Cria o perfil do usuário
+    -- Cria apenas o perfil do usuário
     INSERT INTO public.profiles (id, name, email)
     VALUES (NEW.id, NEW.raw_user_meta_data->>'name', NEW.email);
     
-    -- Cria as categorias padrão
-    PERFORM public.create_default_categories(NEW.id);
+    -- NÃO cria categorias padrão - deixa o usuário personalizar
+    -- PERFORM public.create_default_categories(NEW.id);
     
     RETURN NEW;
 END;

@@ -1,8 +1,10 @@
 'use client'
 
-import { useState } from 'react'
-import { Plus, Edit2, Trash2, Search } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Plus, Edit2, Trash2, Search, AlertTriangle, Eye, EyeOff, CheckCircle, Users, Sparkles } from 'lucide-react'
 import { useFinancial } from '@/context/financial-context'
+import { useSubscription } from '@/hooks/use-subscription'
+import { OnboardingWizard } from '@/components/onboarding-wizard'
 import { NewCategoryModal } from '@/components/new-category-modal'
 import type { Category } from '@/lib/supabase-client'
 import { ProtectedRoute } from '@/components/protected-route'
@@ -13,6 +15,15 @@ export default function CategoriasPage() {
   const [showNewCategoryModal, setShowNewCategoryModal] = useState(false)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const { categories, transactions, deleteCategory } = useFinancial()
+  const { canPerformAction, isTrialExpired } = useSubscription()
+  const [showOnboarding, setShowOnboarding] = useState(false)
+
+  // Detectar se é uma conta nova (sem categorias)
+  useEffect(() => {
+    if (categories.length === 0 && !isTrialExpired()) {
+      setShowOnboarding(true)
+    }
+  }, [categories, isTrialExpired])
 
   const categoriasFiltradas = categories.filter(categoria => {
     const matchNome = categoria.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -33,6 +44,11 @@ export default function CategoriasPage() {
   }
 
   const handleDeleteCategory = async (categoryId: string, categoryName: string) => {
+    if (!canPerformAction('categories')) {
+      alert('Trial expirado! Renove para continuar usando.')
+      return
+    }
+
     if (confirm(`Tem certeza que deseja excluir a categoria "${categoryName}"?`)) {
       try {
         await deleteCategory(categoryId)
@@ -44,6 +60,10 @@ export default function CategoriasPage() {
   }
 
   const handleEditCategory = (category: Category) => {
+    if (!canPerformAction('categories')) {
+      alert('Trial expirado! Renove para continuar usando.')
+      return
+    }
     setEditingCategory(category)
     setShowNewCategoryModal(true)
   }
@@ -54,9 +74,47 @@ export default function CategoriasPage() {
   }
 
   const handleNewCategory = () => {
+    if (!canPerformAction('categories')) {
+      alert('Trial expirado! Renove para continuar usando.')
+      return
+    }
     setEditingCategory(null)
     setShowNewCategoryModal(true)
   }
+
+  const handleToggleStatus = async (id: string, currentStatus: boolean) => {
+    // Funcionalidade temporariamente removida
+    alert('Funcionalidade de ativar/desativar em desenvolvimento')
+  }
+
+  const handleOnboardingComplete = () => {
+    setShowOnboarding(false)
+  }
+
+  const incomeCategories = categories.filter(c => c.type === 'income')
+  const expenseCategories = categories.filter(c => c.type === 'expense')
+
+  // Função para obter props do botão baseado no status
+  const getButtonProps = () => {
+    if (!canPerformAction('categories')) {
+      return {
+        text: 'Trial Expirado - Renovar',
+        className: 'bg-red-600 text-white hover:bg-red-700 animate-pulse',
+        icon: AlertTriangle,
+        title: 'Seu trial expirou. Clique para renovar.'
+      }
+    }
+    
+    return {
+      text: 'Nova Categoria',
+      className: 'bg-blue-600 text-white hover:bg-blue-700 transition-colors',
+      icon: Plus,
+      title: 'Criar nova categoria'
+    }
+  }
+
+  const buttonProps = getButtonProps()
+  const ButtonIcon = buttonProps.icon
 
   return (
     <ProtectedRoute>
@@ -65,12 +123,36 @@ export default function CategoriasPage() {
           <h1 className="text-3xl font-bold text-gray-900">Categorias</h1>
           <button 
             onClick={handleNewCategory}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+            className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${buttonProps.className}`}
+            title={buttonProps.title}
           >
-            <Plus className="h-4 w-4" />
-            <span>Nova Categoria</span>
+            <ButtonIcon className="h-4 w-4" />
+            <span>{buttonProps.text}</span>
           </button>
         </div>
+
+        {/* Alert de trial expirado */}
+        {isTrialExpired() && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-center">
+              <div className="text-red-600 mr-3">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-medium text-red-800">Trial de 30 dias expirado</h3>
+                <p className="text-sm text-red-700 mt-1">
+                  Renove sua assinatura para continuar gerenciando suas categorias.
+                </p>
+              </div>
+              <button
+                onClick={() => window.location.href = '/planos'}
+                className="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700 transition-colors font-medium"
+              >
+                Renovar Agora
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Filtros */}
         <div className="bg-white rounded-lg shadow-sm border p-6">
@@ -132,6 +214,41 @@ export default function CategoriasPage() {
           </div>
         </div>
 
+        {/* Estado vazio para usuários sem categorias (quando não há onboarding) */}
+        {categories.length === 0 && !showOnboarding && (
+          <div className="text-center py-16">
+            <div className="max-w-md mx-auto">
+              <div className="w-24 h-24 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Sparkles className="w-12 h-12 text-blue-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                🎯 Pronto para começar?
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Crie suas primeiras categorias para organizar suas finanças. 
+                Você pode começar com sugestões ou criar do zero.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <button
+                  onClick={() => setShowOnboarding(true)}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center space-x-2"
+                >
+                  <Users className="w-4 h-4" />
+                  <span>Ver Sugestões</span>
+                </button>
+                <button
+                  onClick={() => setShowNewCategoryModal(true)}
+                  disabled={!canPerformAction('categories')}
+                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center justify-center space-x-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Criar do Zero</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Grid de Categorias */}
         {categoriasFiltradas.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -150,15 +267,25 @@ export default function CategoriasPage() {
                     <div className="flex items-center space-x-2">
                       <button 
                         onClick={() => handleEditCategory(categoria)}
-                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Editar categoria"
+                        className={`p-2 rounded-lg transition-colors ${
+                          !canPerformAction('categories') 
+                            ? 'text-gray-400 cursor-not-allowed' 
+                            : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'
+                        }`}
+                        title={!canPerformAction('categories') ? 'Trial expirado' : 'Editar categoria'}
+                        disabled={!canPerformAction('categories')}
                       >
                         <Edit2 className="h-4 w-4" />
                       </button>
                       <button 
                         onClick={() => handleDeleteCategory(categoria.id, categoria.name)}
-                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Excluir categoria"
+                        className={`p-2 rounded-lg transition-colors ${
+                          !canPerformAction('categories') 
+                            ? 'text-gray-400 cursor-not-allowed' 
+                            : 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                        }`}
+                        title={!canPerformAction('categories') ? 'Trial expirado' : 'Excluir categoria'}
+                        disabled={!canPerformAction('categories')}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -201,7 +328,7 @@ export default function CategoriasPage() {
               onClick={handleNewCategory}
               className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
             >
-              + Criar Primeira Categoria
+              {isTrialExpired() ? 'Renovar para Criar' : '+ Criar Primeira Categoria'}
             </button>
           </div>
         )}
@@ -212,6 +339,11 @@ export default function CategoriasPage() {
           onClose={handleCloseModal}
           editingCategory={editingCategory}
         />
+
+        {/* Onboarding Wizard para contas novas */}
+        {showOnboarding && (
+          <OnboardingWizard onComplete={handleOnboardingComplete} />
+        )}
       </div>
     </ProtectedRoute>
   )

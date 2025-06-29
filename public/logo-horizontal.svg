@@ -1,0 +1,40 @@
+<svg width="280" height="80" viewBox="0 0 280 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle for icon -->
+  <circle cx="40" cy="40" r="35" fill="#3B82F6"/>
+  
+  <!-- Dollar sign icon -->
+  <path d="M40 15 L40 65 M28 25 C28 25 28 20 40 20 C52 20 52 25 52 25 C52 30 47 32 40 35 C33 38 28 40 28 45 C28 45 28 50 40 50 C52 50 52 45 52 45" 
+        stroke="white" 
+        stroke-width="3" 
+        stroke-linecap="round" 
+        stroke-linejoin="round" 
+        fill="none"/>
+  
+  <!-- Chart lines in background -->
+  <path d="M25 55 L30 50 L35 45 L45 35 L50 30 L55 25" 
+        stroke="rgba(255,255,255,0.3)" 
+        stroke-width="2" 
+        stroke-linecap="round" 
+        fill="none"/>
+  
+  <!-- Finance text -->
+  <text x="95" y="35" 
+        font-family="Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif" 
+        font-size="28" 
+        font-weight="700" 
+        fill="#1F2937">Finance</text>
+  
+  <!-- PRO text -->
+  <text x="95" y="60" 
+        font-family="Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif" 
+        font-size="28" 
+        font-weight="700" 
+        fill="#3B82F6">PRO</text>
+  
+  <!-- Subtitle -->
+  <text x="220" y="45" 
+        font-family="Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif" 
+        font-size="12" 
+        font-weight="400" 
+        fill="#6B7280">Gestão Financeira</text>
+</svg> 

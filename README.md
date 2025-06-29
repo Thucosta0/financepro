@@ -13,6 +13,47 @@
 
 ---
 
+## ⚠️ **Configuração Importante - Stripe**
+
+### 🚨 **Problemas de Pagamento Resolvidos**
+Se você encontrou o erro `"No such price: 'COLE_AQUI_SEU_PRICE_ID_CORRETO'"`, já foi corrigido! 
+
+**O que foi feito:**
+- ✅ **Placeholders removidos** do código
+- ✅ **Variáveis de ambiente** configuradas corretamente
+- ✅ **Validações adicionadas** na API para evitar erros
+- ✅ **Página de teste criada** em `/test-stripe`
+- ✅ **Guia completo** no arquivo `STRIPE_SETUP_GUIDE.md`
+
+**Para configurar:**
+1. Configure as variáveis no `.env.local`:
+```env
+STRIPE_SECRET_KEY=sk_live_ou_sk_test_...
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_ou_pk_test_...
+STRIPE_PRODUCT_ID=prod_SeuProductId
+STRIPE_PRICE_ID=price_SeuPriceId
+```
+
+2. **Teste a configuração:** Acesse `/test-stripe` para verificar
+3. **Consulte o guia:** Leia `STRIPE_SETUP_GUIDE.md` para setup completo
+
+### 🎉 **Trial Completo SEM Limitações**
+**IMPORTANTE**: Removemos todas as limitações do período de teste:
+- 🚫 **Zero restrições** durante 30 dias
+- 💰 **Transações ilimitadas** 
+- 🏷️ **Categorias ilimitadas**
+- 💳 **Cartões ilimitados**
+- 📊 **Todos os recursos** liberados
+- ✨ **Experiência Premium** completa
+
+### 🎨 **Logotipos Profissionais Incluídos**
+Criamos logotipos profissionais para usar no Stripe e outras plataformas:
+- 📋 **Visualize todos:** Acesse `/logos` para ver todos os designs
+- 🎯 **Recomendado Stripe:** Use `logo-clean.svg` + `logo-icon.svg`
+- 🌈 **Cores:** #3B82F6 (marca) e #1D4ED8 (destaque)
+
+---
+
 ## 🚀 **Sobre o Projeto**
 
 O **FinancePRO** é uma aplicação web moderna e completa para gestão financeira pessoal, desenvolvida com foco em **segurança**, **usabilidade** e **performance**. Oferece controle total sobre receitas, despesas, cartões, orçamentos e muito mais.

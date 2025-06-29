@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Search, Filter, Download, Calendar, X } from 'lucide-react'
+import { Plus, Search, Filter, Download, Calendar, X, AlertTriangle } from 'lucide-react'
 import { useFinancial } from '@/context/financial-context'
+import { useSubscription } from '@/hooks/use-subscription'
 import { NewTransactionModal } from '@/components/new-transaction-modal'
 import { TransactionPrerequisitesGuide } from '@/components/transaction-prerequisites-guide'
 import { useTransactionPrerequisites } from '@/hooks/use-transaction-prerequisites'
@@ -27,11 +28,21 @@ export default function TransacoesPage() {
   
   const { transactions, cards, categories, getFinancialSummary } = useFinancial()
   const { canCreateTransaction } = useTransactionPrerequisites()
+  const { canPerformAction, isTrialExpired } = useSubscription()
 
   const { receitas, despesas, saldo } = getFinancialSummary()
 
+  // Verificar se pode criar transações considerando tanto pré-requisitos quanto trial
+  const canCreateTransactionFull = canCreateTransaction && canPerformAction('transactions')
+
   // Função para lidar com o clique no botão Nova Transação
   const handleNewTransactionClick = () => {
+    if (isTrialExpired()) {
+      // Se trial expirou, redirecionar para planos
+      window.location.href = '/planos'
+      return
+    }
+    
     if (canCreateTransaction) {
       setShowNewTransactionModal(true)
     } else {
@@ -41,8 +52,43 @@ export default function TransacoesPage() {
 
   // Função para continuar para o modal de transação após o guia
   const handleContinueToTransaction = () => {
+    if (isTrialExpired()) {
+      window.location.href = '/planos'
+      return
+    }
     setShowNewTransactionModal(true)
   }
+
+  // Função para obter texto e estilo do botão baseado no status
+  const getTransactionButtonProps = () => {
+    if (isTrialExpired()) {
+      return {
+        text: 'Trial Expirado - Renovar',
+        className: 'bg-red-600 text-white hover:bg-red-700 animate-pulse',
+        icon: AlertTriangle,
+        title: 'Seu trial expirou. Clique para renovar.'
+      }
+    }
+    
+    if (!canCreateTransaction) {
+      return {
+        text: 'Começar Transações',
+        className: 'bg-orange-500 text-white hover:bg-orange-600 animate-pulse',
+        icon: Plus,
+        title: 'Configure categorias e cartões primeiro'
+      }
+    }
+    
+    return {
+      text: 'Nova Transação',
+      className: 'bg-blue-600 text-white hover:bg-blue-700 transform hover:scale-105',
+      icon: Plus,
+      title: 'Criar nova transação'
+    }
+  }
+
+  const buttonProps = getTransactionButtonProps()
+  const ButtonIcon = buttonProps.icon
 
   const transacoesFiltradas = transactions.filter(transacao => {
     const categoryName = transacao.category?.name || ''
@@ -206,15 +252,11 @@ export default function TransacoesPage() {
           <h1 className="text-3xl font-bold text-gray-900">Transações</h1>
           <button 
             onClick={handleNewTransactionClick}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all font-medium ${
-              canCreateTransaction 
-                ? 'bg-blue-600 text-white hover:bg-blue-700 transform hover:scale-105' 
-                : 'bg-orange-500 text-white hover:bg-orange-600 animate-pulse'
-            }`}
-            title={canCreateTransaction ? 'Criar nova transação' : 'Configure categorias e cartões primeiro'}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all font-medium ${buttonProps.className}`}
+            title={buttonProps.title}
           >
-            <Plus className="h-4 w-4" />
-            <span>{canCreateTransaction ? 'Nova Transação' : 'Começar Transações'}</span>
+            <ButtonIcon className="h-4 w-4" />
+            <span>{buttonProps.text}</span>
           </button>
         </div>
 
@@ -251,8 +293,31 @@ export default function TransacoesPage() {
           </div>
         </div>
 
+        {/* Alert de trial expirado */}
+        {isTrialExpired() && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-center">
+              <div className="text-red-600 mr-3">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-medium text-red-800">Trial de 30 dias expirado</h3>
+                <p className="text-sm text-red-700 mt-1">
+                  Seu trial completo acabou. Faça upgrade para continuar criando e gerenciando transações.
+                </p>
+              </div>
+              <button
+                onClick={() => window.location.href = '/planos'}
+                className="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700 transition-colors font-medium"
+              >
+                Renovar Agora
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Alert de pré-requisitos se necessário */}
-        {!canCreateTransaction && (
+        {!isTrialExpired() && !canCreateTransaction && (
           <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
             <div className="flex items-center">
               <div className="text-orange-600 mr-3">⚠️</div>
@@ -479,7 +544,7 @@ export default function TransacoesPage() {
                 onClick={handleNewTransactionClick}
                 className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
               >
-                {canCreateTransaction ? 'Adicionar Primeira Transação' : 'Configurar Pré-requisitos'}
+                {isTrialExpired() ? 'Renovar para Adicionar' : canCreateTransaction ? 'Adicionar Primeira Transação' : 'Configurar Pré-requisitos'}
               </button>
             </div>
           )}

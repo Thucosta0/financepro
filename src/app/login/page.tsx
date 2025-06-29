@@ -26,15 +26,48 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setFeedback(null)
-    setShowResendVerification(false)
     
     const result = await login(formData.emailOrUsername, formData.password)
     
     if (result.success) {
       setFeedback({ type: 'success', message: 'Login realizado com sucesso!' })
       // Aguardar um pouco para mostrar a mensagem de sucesso
-      setTimeout(() => {
-        router.push('/dashboard')
+      setTimeout(async () => {
+        // Verificar se é um usuário novo ou existente
+        try {
+          const { data: { user } } = await supabase.auth.getUser()
+          
+          if (user) {
+            // Verificar se o usuário tem dados existentes (transações, categorias, cartões)
+            const [transactionsResult, categoriesResult, cardsResult] = await Promise.all([
+              supabase.from('transactions').select('id').eq('user_id', user.id).limit(1),
+              supabase.from('categories').select('id').eq('user_id', user.id).limit(1),
+              supabase.from('cards').select('id').eq('user_id', user.id).limit(1)
+            ])
+            
+            const hasTransactions = transactionsResult.data && transactionsResult.data.length > 0
+            const hasCategories = categoriesResult.data && categoriesResult.data.length > 0
+            const hasCards = cardsResult.data && cardsResult.data.length > 0
+            
+            // Se não tem nenhum dado, é provável que seja um usuário novo
+            if (!hasTransactions && !hasCategories && !hasCards) {
+              console.log('🆕 Usuário novo detectado - redirecionando para /planos')
+              // Marcar que é um novo usuário para mostrar boas-vindas especiais
+              sessionStorage.setItem('fromLogin', 'newUser')
+              router.push('/planos')
+            } else {
+              console.log('👤 Usuário existente detectado - redirecionando para /dashboard')
+              router.push('/dashboard')
+            }
+          } else {
+            // Fallback se não conseguir verificar
+            router.push('/dashboard')
+          }
+        } catch (error) {
+          console.error('Erro ao verificar dados do usuário:', error)
+          // Em caso de erro, redirecionar para dashboard
+          router.push('/dashboard')
+        }
       }, 1500)
     } else {
       setFeedback({ type: 'error', message: result.message || 'Erro ao fazer login' })
