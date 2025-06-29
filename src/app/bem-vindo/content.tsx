@@ -1,218 +1,402 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { 
+  User, 
+  CreditCard, 
+  BarChart3, 
+  Target, 
+  Calendar, 
+  TrendingUp,
+  ArrowRight,
+  ChevronRight,
+  Sparkles,
+  Clock
+} from 'lucide-react'
 import { supabase } from '@/lib/supabase-client'
-import { CheckCircle2, ArrowRight, DollarSign, PieChart, CreditCard, Target, Star, Sparkles } from 'lucide-react'
+
+interface UserProfile {
+  name: string
+  username?: string
+  email: string
+}
 
 export default function BemVindoContent() {
-  const [userName, setUserName] = useState('')
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [countdown, setCountdown] = useState(8)
   const router = useRouter()
-  const searchParams = useSearchParams()
-  
+
+  // Buscar dados do usuário
   useEffect(() => {
-    const getUserName = async () => {
+    const fetchUserProfile = async () => {
       try {
-        // Múltiplas estratégias para capturar o nome do usuário
-        let name = ''
+        // Verificar se usuário está logado
+        const { data: { user } } = await supabase.auth.getUser()
         
-        // 1. Tentar pegar da URL
-        name = searchParams.get('name') || searchParams.get('user_name') || ''
-        
-        // 2. Tentar pegar do localStorage (múltiplas chaves)
-        if (!name) {
-          name = localStorage.getItem('welcomeUserName') || 
-                 localStorage.getItem('userName') || 
-                 localStorage.getItem('user_name') || ''
+        if (user) {
+          // Buscar perfil completo do banco
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('name, username, email')
+            .eq('id', user.id)
+            .single()
+
+          if (profile && !error) {
+            console.log('✅ Perfil encontrado no banco:', profile)
+            setUserProfile(profile)
+            setIsLoading(false)
+            return
+          }
         }
+
+        // Fallback: tentar múltiplas estratégias
+        console.log('⚠️ Usuário não logado ou perfil não encontrado, usando estratégias de fallback...')
+
+        // 1. Buscar nos parâmetros da URL
+        const urlParams = new URLSearchParams(window.location.search)
+        const nameFromUrl = urlParams.get('name')
         
-        // 3. Tentar pegar do usuário logado no Supabase
-        if (!name) {
-          try {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (user?.user_metadata?.name) {
-              name = user.user_metadata.name
-              console.log('✅ Nome obtido do Supabase:', name)
-            } else if (user?.user_metadata?.full_name) {
-              name = user.user_metadata.full_name
-            } else if (user?.email) {
-              // Se não tem nome, usar a parte antes do @ do email
-              name = user.email.split('@')[0]
-              console.log('📧 Nome derivado do email:', name)
-            }
-          } catch (supabaseError) {
-            console.log('⚠️ Erro ao buscar usuário no Supabase:', supabaseError)
+        if (nameFromUrl) {
+          console.log('1️⃣ Nome encontrado na URL:', nameFromUrl)
+          setUserProfile({ 
+            name: nameFromUrl, 
+            email: urlParams.get('email') || 'email@exemplo.com' 
+          })
+          setIsLoading(false)
+          return
+        }
+
+        // 2. Buscar no localStorage (múltiplas chaves)
+        const nameKeys = ['welcomeUserName', 'userName', 'userFullName', 'user_name']
+        let nameFromStorage = null
+        
+        for (const key of nameKeys) {
+          const stored = localStorage.getItem(key)
+          if (stored) {
+            nameFromStorage = stored
+            console.log(`2️⃣ Nome encontrado no localStorage (${key}):`, stored)
+            break
+          }
+        }
+
+        if (nameFromStorage) {
+          setUserProfile({ 
+            name: nameFromStorage, 
+            email: localStorage.getItem('userEmail') || 'email@exemplo.com' 
+          })
+          setIsLoading(false)
+          return
+        }
+
+        // 3. Verificar se há usuário autenticado no Supabase (sem perfil)
+        if (user) {
+          const emailName = user.email?.split('@')[0] || 'usuário'
+          console.log('3️⃣ Usuário encontrado mas sem perfil, usando email:', emailName)
+          setUserProfile({ 
+            name: emailName, 
+            email: user.email || 'email@exemplo.com' 
+          })
+          setIsLoading(false)
+          return
+        }
+
+        // 4. Fallback final amigável
+        console.log('4️⃣ Usando fallback final')
+        setUserProfile({ 
+          name: 'Amigo', 
+          email: 'email@exemplo.com' 
+        })
+        setIsLoading(false)
+
+      } catch (error) {
+        console.error('❌ Erro ao buscar perfil do usuário:', error)
+        setUserProfile({ 
+          name: 'Amigo', 
+          email: 'email@exemplo.com' 
+        })
+        setIsLoading(false)
+      }
+    }
+
+    fetchUserProfile()
+  }, [])
+
+  // Countdown para redirecionamento automático
+  useEffect(() => {
+    if (!isLoading && countdown > 0) {
+      const timer = setTimeout(() => {
+        setCountdown(countdown - 1)
+      }, 1000)
+      return () => clearTimeout(timer)
+    } else if (countdown === 0) {
+      router.push('/login')
+    }
+  }, [countdown, isLoading, router])
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-600 flex items-center justify-center">
+        <div className="text-white text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <p>Carregando...</p>
+        </div>
+      </div>
+    )
+  }
+
+  const firstName = userProfile?.username || userProfile?.name?.split(' ')[0] || 'Amigo'
+
+  return (
+    <>
+      <style jsx>{`
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
           }
         }
         
-        // 4. Fallback para nome genérico, mas capitalizado
-        if (!name || name.trim() === '') {
-          name = 'Amigo'
+        @keyframes slideIn {
+          from {
+            opacity: 0;
+            transform: translateX(-30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
         }
         
-        // Capitalizar primeira letra de cada palavra
-        const formattedName = name.trim()
-          .split(' ')
-          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-          .join(' ')
+        @keyframes bounceSubtle {
+          0%, 100% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(-3px);
+          }
+        }
         
-        console.log('👤 Nome do usuário definido:', formattedName)
-        setUserName(formattedName)
+        @keyframes shimmer {
+          0% {
+            background-position: -200px 0;
+          }
+          100% {
+            background-position: calc(200px + 100%) 0;
+          }
+        }
         
-        // Salvar o nome para futuras visitas
-        localStorage.setItem('lastUserName', formattedName)
+        .animate-fade-in-up {
+          animation: fadeInUp 0.6s ease-out;
+        }
         
-      } catch (error) {
-        console.error('❌ Erro ao obter nome do usuário:', error)
-        setUserName('Amigo')
-      }
-    }
-    
-    getUserName()
-  }, [searchParams])
-
-  // Redirecionamento automático para login após 8 segundos
-  useEffect(() => {
-    const autoRedirect = setTimeout(() => {
-      console.log('🔀 Redirecionamento automático para login...')
-      router.push('/login?from=welcome')
-    }, 8000)
-
-    return () => clearTimeout(autoRedirect)
-  }, [router])
-
-  const features = [
-    {
-      icon: DollarSign,
-      title: 'Controle Total das Finanças',
-      description: 'Gerencie todas suas receitas e despesas em um só lugar'
-    },
-    {
-      icon: PieChart,
-      title: 'Relatórios Detalhados',
-      description: 'Visualize seus gastos com gráficos intuitivos e relatórios completos'
-    },
-    {
-      icon: CreditCard,
-      title: 'Gestão de Cartões',
-      description: 'Organize todos seus cartões e contas bancárias'
-    },
-    {
-      icon: Target,
-      title: 'Metas e Orçamentos',
-      description: 'Defina objetivos financeiros e acompanhe seu progresso'
-    }
-  ]
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-600">
-      <div className="absolute inset-0 bg-black bg-opacity-10"></div>
+        .animate-slide-in {
+          animation: slideIn 0.6s ease-out;
+        }
+        
+        .animate-bounce-subtle {
+          animation: bounceSubtle 2s ease-in-out infinite;
+        }
+        
+        .animate-shimmer {
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+          background-size: 200px 100%;
+          animation: shimmer 2s infinite;
+        }
+        
+        .delay-100 {
+          animation-delay: 0.1s;
+        }
+        
+        .delay-200 {
+          animation-delay: 0.2s;
+        }
+        
+        .delay-300 {
+          animation-delay: 0.3s;
+        }
+        
+        .delay-400 {
+          animation-delay: 0.4s;
+        }
+        
+        .delay-500 {
+          animation-delay: 0.5s;
+        }
+        
+        .delay-600 {
+          animation-delay: 0.6s;
+        }
+      `}</style>
       
-      <div className="relative min-h-screen flex items-center justify-center p-4">
-        <div className="w-full max-w-4xl">
-          
-          {/* Header de Boas-vindas */}
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-6 animate-bounce">
-              <CheckCircle2 className="h-10 w-10 text-green-600" />
+      <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-600 p-4 relative overflow-hidden">
+        {/* Animated background elements */}
+        <div className="absolute inset-0">
+          <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-white bg-opacity-5 rounded-full animate-pulse"></div>
+          <div className="absolute top-3/4 right-1/4 w-24 h-24 bg-white bg-opacity-5 rounded-full animate-pulse delay-700"></div>
+          <div className="absolute bottom-1/4 left-1/3 w-16 h-16 bg-white bg-opacity-5 rounded-full animate-pulse delay-1000"></div>
+        </div>
+        
+        <div className="relative max-w-6xl mx-auto pt-8">
+          {/* Header com boas-vindas */}
+          <div className="text-center mb-12 animate-fade-in-up">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-3xl mb-6 shadow-2xl animate-bounce-subtle">
+              <Sparkles className="h-10 w-10 text-white" />
             </div>
             
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <Sparkles className="h-6 w-6 text-yellow-300" />
-              <h1 className="text-4xl md:text-5xl font-bold text-white">
-                Bem-vindo, {userName}!
-              </h1>
-              <Sparkles className="h-6 w-6 text-yellow-300" />
-            </div>
-            
+            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+              🎉 Bem-vindo, <span className="text-yellow-300">{firstName}</span>!
+            </h1>
             <p className="text-xl text-blue-100 mb-2">
-              🎉 Sua conta foi confirmada com sucesso!
+              Sua conta foi confirmada com sucesso
             </p>
             <p className="text-lg text-blue-200">
-              Agora faça seu <strong>login</strong> para começar a usar o <strong>FinancePRO</strong>
+              Agora você pode fazer seu <strong>login</strong> e começar a usar o FinancePRO
             </p>
           </div>
 
-          {/* Cards de Funcionalidades */}
-          <div className="grid md:grid-cols-2 gap-6 mb-12">
-            {features.map((feature, index) => (
-              <div key={index} className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <feature.icon className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      {feature.title}
-                    </h3>
-                    <p className="text-gray-600 text-sm">
-                      {feature.description}
+          {/* Aviso importante */}
+          <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-2xl p-6 mb-8 border border-white border-opacity-20 animate-fade-in-up delay-200">
+            <div className="flex items-start">
+              <Clock className="h-6 w-6 text-yellow-300 mt-1 mr-4 flex-shrink-0 animate-bounce-subtle" />
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-2">
+                  Próximo passo: Fazer Login
+                </h3>
+                <p className="text-blue-100 mb-4">
+                  Sua conta foi criada com sucesso! Para começar a usar todas as funcionalidades do FinancePRO, 
+                  você precisa <strong>fazer seu login</strong> com o email e senha que você criou.
+                </p>
+                <div className="bg-blue-600 bg-opacity-30 rounded-lg p-3 mb-4">
+                  <p className="text-blue-100 text-sm">
+                    <strong>📧 Email:</strong> {userProfile?.email}
+                  </p>
+                  {userProfile?.username && (
+                    <p className="text-blue-100 text-sm">
+                      <strong>👤 Username:</strong> @{userProfile.username}
                     </p>
-                  </div>
+                  )}
                 </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Próximo Passo */}
-          <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-xl mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
-              🔐 Próximo Passo: Fazer Login
-            </h2>
-            
-            <div className="text-center">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-blue-600 font-bold text-2xl">🔑</span>
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-3">Entre na sua conta</h3>
-              <p className="text-gray-600 mb-4">
-                Use o email e senha que você cadastrou para acessar o FinancePRO
-              </p>
-              
-              {/* Contador visual */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                <p className="text-sm text-blue-700">
-                  ⏱️ Você será redirecionado automaticamente para o login em alguns segundos...
+                <p className="text-blue-200 text-sm">
+                  Redirecionamento automático em <strong>{countdown} segundos</strong>...
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Botão de Ação */}
-          <div className="text-center space-y-4">
+          {/* Botão destacado para entrar */}
+          <div className="text-center mb-12 animate-fade-in-up delay-300">
             <Link
-              href="/login?from=welcome"
-              className="inline-flex items-center gap-3 bg-gradient-to-r from-green-600 to-blue-600 text-white px-12 py-5 rounded-xl font-bold text-xl hover:from-green-700 hover:to-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 animate-pulse"
+              href="/login"
+              className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-green-500 to-blue-600 text-white font-bold text-lg rounded-2xl hover:from-green-600 hover:to-blue-700 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl active:scale-95 group animate-shimmer"
             >
-              🔑 Entrar na Minha Conta
-              <ArrowRight className="h-6 w-6" />
+              Entrar na Minha Conta
+              <ArrowRight className="ml-3 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
             </Link>
-            
-            <p className="text-blue-100 text-sm">
-              Ou aguarde o redirecionamento automático
-            </p>
           </div>
 
-          {/* Mensagem de Motivação */}
-          <div className="mt-12 text-center">
-            <div className="bg-gradient-to-r from-yellow-400/20 to-orange-400/20 backdrop-blur-sm rounded-2xl p-6 border border-yellow-300/30">
-              <div className="flex items-center justify-center gap-2 mb-3">
-                <Star className="h-5 w-5 text-yellow-300 fill-current" />
-                <Star className="h-5 w-5 text-yellow-300 fill-current" />
-                <Star className="h-5 w-5 text-yellow-300 fill-current" />
+          {/* Grid de funcionalidades */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            {/* Card 1 - Transações */}
+            <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-2xl p-6 border border-white border-opacity-20 hover:bg-opacity-15 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl group animate-fade-in-up delay-100">
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-blue-600 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-300">
+                  <CreditCard className="h-6 w-6 text-white" />
+                </div>
+                <h3 className="text-xl font-semibold text-white">Transações</h3>
               </div>
-              <h3 className="text-xl font-semibold text-white mb-2">
-                Sua jornada financeira está prestes a começar!
-              </h3>
-              <p className="text-blue-100">
-                Após fazer login, você terá acesso a todas as ferramentas para
-                transformar sua relação com o dinheiro! 💪
+              <p className="text-blue-100 text-sm leading-relaxed">
+                Registre suas receitas e despesas, organize por categorias e mantenha suas finanças sempre atualizadas.
+              </p>
+            </div>
+
+            {/* Card 2 - Categorias */}
+            <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-2xl p-6 border border-white border-opacity-20 hover:bg-opacity-15 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl group animate-fade-in-up delay-200">
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-300">
+                  <BarChart3 className="h-6 w-6 text-white" />
+                </div>
+                <h3 className="text-xl font-semibold text-white">Categorias</h3>
+              </div>
+              <p className="text-blue-100 text-sm leading-relaxed">
+                Organize seus gastos em categorias personalizadas e visualize onde está gastando mais dinheiro.
+              </p>
+            </div>
+
+            {/* Card 3 - Orçamentos */}
+            <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-2xl p-6 border border-white border-opacity-20 hover:bg-opacity-15 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl group animate-fade-in-up delay-300">
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 bg-gradient-to-r from-yellow-500 to-orange-600 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-300">
+                  <Target className="h-6 w-6 text-white" />
+                </div>
+                <h3 className="text-xl font-semibold text-white">Orçamentos</h3>
+              </div>
+              <p className="text-blue-100 text-sm leading-relaxed">
+                Defina metas de gastos por categoria e acompanhe seu progresso mensalmente.
+              </p>
+            </div>
+
+            {/* Card 4 - Cartões */}
+            <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-2xl p-6 border border-white border-opacity-20 hover:bg-opacity-15 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl group animate-fade-in-up delay-400">
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-300">
+                  <CreditCard className="h-6 w-6 text-white" />
+                </div>
+                <h3 className="text-xl font-semibold text-white">Cartões & Contas</h3>
+              </div>
+              <p className="text-blue-100 text-sm leading-relaxed">
+                Gerencie seus cartões de crédito, débito e contas bancárias em um só lugar.
+              </p>
+            </div>
+
+            {/* Card 5 - Transações Fixas */}
+            <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-2xl p-6 border border-white border-opacity-20 hover:bg-opacity-15 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl group animate-fade-in-up delay-500">
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 bg-gradient-to-r from-red-500 to-rose-600 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-300">
+                  <Calendar className="h-6 w-6 text-white" />
+                </div>
+                <h3 className="text-xl font-semibold text-white">Transações Fixas</h3>
+              </div>
+              <p className="text-blue-100 text-sm leading-relaxed">
+                Configure transações recorrentes como salário, aluguel e assinaturas mensais.
+              </p>
+            </div>
+
+            {/* Card 6 - Relatórios */}
+            <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-2xl p-6 border border-white border-opacity-20 hover:bg-opacity-15 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl group animate-fade-in-up delay-600">
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 bg-gradient-to-r from-teal-500 to-cyan-600 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-300">
+                  <TrendingUp className="h-6 w-6 text-white" />
+                </div>
+                <h3 className="text-xl font-semibold text-white">Dashboard</h3>
+              </div>
+              <p className="text-blue-100 text-sm leading-relaxed">
+                Visualize gráficos detalhados e insights sobre seus hábitos financeiros.
               </p>
             </div>
           </div>
+
+          {/* Footer */}
+          <div className="text-center animate-fade-in-up delay-400">
+            <p className="text-blue-200 mb-4">
+              Pronto para transformar sua vida financeira? 
+            </p>
+            <Link
+              href="/login"
+              className="inline-flex items-center text-white hover:text-yellow-300 transition-all duration-300 hover:translate-x-1 group"
+            >
+              Começar agora
+              <ChevronRight className="ml-1 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+            </Link>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   )
 } 
