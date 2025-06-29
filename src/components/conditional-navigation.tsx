@@ -9,7 +9,7 @@ export function ConditionalNavigation({ children }: { children: React.ReactNode 
   const pathname = usePathname()
   
   // Páginas que não devem mostrar a navegação
-  const noNavPages = ['/', '/login', '/cadastro', '/reset-password', '/confirm-email', '/test-reset']
+  const noNavPages = ['/', '/login', '/cadastro', '/reset-password', '/confirm-email', '/test-reset', '/bem-vindo']
   const shouldShowNav = user && !noNavPages.includes(pathname)
 
   if (!shouldShowNav) {
