@@ -52,10 +52,20 @@ export default function ConfirmEmailContent() {
         console.log('⚠️ Erro na confirmação silenciosa, mas usuário prossegue:', error)
       }
 
-      // SEMPRE redirecionar para boas-vindas após 1.5 segundos
+      // SEMPRE redirecionar para boas-vindas após 1.5 segundos  
       setTimeout(() => {
         console.log('🔀 Redirecionamento automático para /bem-vindo')
-        router.push('/bem-vindo')
+        
+        // Tentar pegar o nome salvo para passar na URL
+        const savedName = localStorage.getItem('welcomeUserName') || 
+                          localStorage.getItem('userName') || 
+                          localStorage.getItem('userFullName') || ''
+        
+        if (savedName) {
+          router.push(`/bem-vindo?name=${encodeURIComponent(savedName)}`)
+        } else {
+          router.push('/bem-vindo')
+        }
       }, 1500)
     }
 

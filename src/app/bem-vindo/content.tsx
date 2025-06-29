@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { supabase } from '@/lib/supabase-client'
 import { CheckCircle2, ArrowRight, DollarSign, PieChart, CreditCard, Target, Star, Sparkles } from 'lucide-react'
 
 export default function BemVindoContent() {
@@ -11,14 +12,64 @@ export default function BemVindoContent() {
   const searchParams = useSearchParams()
   
   useEffect(() => {
-    // Pegar o nome do usuário dos parâmetros ou localStorage
-    const name = searchParams.get('name') || localStorage.getItem('welcomeUserName') || 'Usuário'
-    setUserName(name)
-    
-    // Limpar o nome do localStorage após usar
-    if (localStorage.getItem('welcomeUserName')) {
-      localStorage.removeItem('welcomeUserName')
+    const getUserName = async () => {
+      try {
+        // Múltiplas estratégias para capturar o nome do usuário
+        let name = ''
+        
+        // 1. Tentar pegar da URL
+        name = searchParams.get('name') || searchParams.get('user_name') || ''
+        
+        // 2. Tentar pegar do localStorage (múltiplas chaves)
+        if (!name) {
+          name = localStorage.getItem('welcomeUserName') || 
+                 localStorage.getItem('userName') || 
+                 localStorage.getItem('user_name') || ''
+        }
+        
+        // 3. Tentar pegar do usuário logado no Supabase
+        if (!name) {
+          try {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user?.user_metadata?.name) {
+              name = user.user_metadata.name
+              console.log('✅ Nome obtido do Supabase:', name)
+            } else if (user?.user_metadata?.full_name) {
+              name = user.user_metadata.full_name
+            } else if (user?.email) {
+              // Se não tem nome, usar a parte antes do @ do email
+              name = user.email.split('@')[0]
+              console.log('📧 Nome derivado do email:', name)
+            }
+          } catch (supabaseError) {
+            console.log('⚠️ Erro ao buscar usuário no Supabase:', supabaseError)
+          }
+        }
+        
+        // 4. Fallback para nome genérico, mas capitalizado
+        if (!name || name.trim() === '') {
+          name = 'Amigo'
+        }
+        
+        // Capitalizar primeira letra de cada palavra
+        const formattedName = name.trim()
+          .split(' ')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' ')
+        
+        console.log('👤 Nome do usuário definido:', formattedName)
+        setUserName(formattedName)
+        
+        // Salvar o nome para futuras visitas
+        localStorage.setItem('lastUserName', formattedName)
+        
+      } catch (error) {
+        console.error('❌ Erro ao obter nome do usuário:', error)
+        setUserName('Amigo')
+      }
     }
+    
+    getUserName()
   }, [searchParams])
 
   const features = [

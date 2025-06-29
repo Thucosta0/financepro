@@ -168,9 +168,12 @@ export const signUp = async (email: string, password: string, name: string, user
   const redirectUrl = getRedirectUrl()
   console.log('🔗 URL de redirecionamento para confirmação:', redirectUrl)
 
-  // Armazenar o nome do usuário para usar na página de boas-vindas
+  // Armazenar o nome do usuário para usar na página de boas-vindas (múltiplas chaves)
   if (typeof window !== 'undefined') {
     localStorage.setItem('welcomeUserName', name)
+    localStorage.setItem('userName', name)
+    localStorage.setItem('userFullName', name)
+    console.log('💾 Nome salvo no localStorage:', name)
   }
 
   const { data, error } = await supabase.auth.signUp({
