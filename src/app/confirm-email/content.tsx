@@ -15,16 +15,33 @@ export default function ConfirmEmailContent() {
   useEffect(() => {
     const confirmEmail = async () => {
       try {
-        // Obter parâmetros da URL usando window.location (apenas no cliente)
+        // Verificar se estamos no ambiente correto
+        if (typeof window === 'undefined') {
+          console.log('Aguardando carregamento do cliente...')
+          return
+        }
+
+        // Obter parâmetros da URL
         const urlParams = new URLSearchParams(window.location.search)
         const token = urlParams.get('token')
         const type = urlParams.get('type')
         
-        if (!token || type !== 'signup') {
+        console.log('Parâmetros da URL:', { token: token ? 'presente' : 'ausente', type })
+        
+        // Verificar se temos os parâmetros necessários
+        if (!token) {
           setStatus('error')
-          setMessage('Link de confirmação inválido ou expirado.')
+          setMessage('Token de confirmação não encontrado na URL. Verifique se você está usando o link completo do email.')
           return
         }
+
+        if (type !== 'signup') {
+          setStatus('error')
+          setMessage('Tipo de confirmação inválido. Este link é apenas para confirmação de cadastro.')
+          return
+        }
+
+        console.log('Tentando confirmar email com Supabase...')
 
         // Confirmar o email usando o token
         const { error } = await supabase.auth.verifyOtp({
@@ -33,36 +50,42 @@ export default function ConfirmEmailContent() {
         })
 
         if (error) {
-          console.error('Error confirming email:', error)
+          console.error('Erro ao confirmar email:', error)
           setStatus('error')
           
-          if (error.message.includes('expired')) {
-            setMessage('Link de confirmação expirado. Solicite um novo email de confirmação.')
-          } else if (error.message.includes('invalid')) {
-            setMessage('Link de confirmação inválido. Verifique se você está usando o link correto.')
+          // Mensagens mais específicas baseadas no erro
+          if (error.message.includes('expired') || error.message.includes('Token has expired')) {
+            setMessage('Link de confirmação expirado. Os links expiram em 24 horas. Solicite um novo cadastro.')
+          } else if (error.message.includes('invalid') || error.message.includes('Invalid token')) {
+            setMessage('Link de confirmação inválido. Verifique se você copiou o link completo do email.')
+          } else if (error.message.includes('already confirmed')) {
+            setMessage('Este email já foi confirmado anteriormente. Você pode fazer login normalmente.')
           } else {
-            setMessage('Erro ao confirmar email. Tente novamente.')
+            setMessage(`Erro ao confirmar email: ${error.message}. Se o problema persistir, entre em contato conosco.`)
           }
         } else {
+          console.log('Email confirmado com sucesso!')
           setStatus('success')
-          setMessage('Email confirmado com sucesso! Redirecionando para o login...')
+          setMessage('Email confirmado com sucesso! Sua conta está ativa. Redirecionando para o login...')
           
           // Redirecionar para login após 3 segundos
           setTimeout(() => {
-            router.push('/login')
+            router.push('/login?confirmed=true')
           }, 3000)
         }
       } catch (error) {
-        console.error('Error in confirmEmail:', error)
+        console.error('Erro inesperado:', error)
         setStatus('error')
-        setMessage('Erro inesperado ao confirmar email.')
+        setMessage('Erro inesperado ao confirmar email. Verifique sua conexão com a internet e tente novamente.')
       }
     }
 
-    // Só executar no lado cliente
-    if (typeof window !== 'undefined') {
+    // Aguardar um pouco para garantir que o componente carregou
+    const timer = setTimeout(() => {
       confirmEmail()
-    }
+    }, 500)
+
+    return () => clearTimeout(timer)
   }, [router])
 
   return (

@@ -150,6 +150,24 @@ export const signIn = async (email: string, password: string) => {
 }
 
 export const signUp = async (email: string, password: string, name: string, username?: string) => {
+  // Determinar a URL de redirecionamento baseada no ambiente
+  const getRedirectUrl = () => {
+    if (typeof window === 'undefined') return 'http://localhost:3000/confirm-email'
+    
+    const origin = window.location.origin
+    
+    // Se estamos em produção (financepro.dev.br) ou outros domínios de produção
+    if (origin.includes('financepro.dev.br') || origin.includes('vercel.app')) {
+      return `${origin}/confirm-email`
+    }
+    
+    // Para desenvolvimento local
+    return 'http://localhost:3000/confirm-email'
+  }
+
+  const redirectUrl = getRedirectUrl()
+  console.log('🔗 URL de redirecionamento para confirmação:', redirectUrl)
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -158,7 +176,7 @@ export const signUp = async (email: string, password: string, name: string, user
         name: name,
         username: username
       },
-      emailRedirectTo: `${window.location.origin}/confirm-email`
+      emailRedirectTo: redirectUrl
     }
   })
   
@@ -167,6 +185,8 @@ export const signUp = async (email: string, password: string, name: string, user
     return { user: null, error }
   }
 
+  console.log('✅ Usuário criado com sucesso. Email de confirmação enviado para:', email)
+
   // Se o usuário foi criado com sucesso e temos username, atualizar o perfil
   if (data.user && username) {
     try {
@@ -174,6 +194,7 @@ export const signUp = async (email: string, password: string, name: string, user
         .from('profiles')
         .update({ username })
         .eq('id', data.user.id)
+      console.log('✅ Username atualizado no perfil:', username)
     } catch (profileError) {
       console.error('Error updating profile with username:', profileError)
     }
