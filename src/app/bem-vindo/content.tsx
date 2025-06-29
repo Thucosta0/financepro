@@ -72,6 +72,16 @@ export default function BemVindoContent() {
     getUserName()
   }, [searchParams])
 
+  // Redirecionamento automático para login após 8 segundos
+  useEffect(() => {
+    const autoRedirect = setTimeout(() => {
+      console.log('🔀 Redirecionamento automático para login...')
+      router.push('/login?from=welcome')
+    }, 8000)
+
+    return () => clearTimeout(autoRedirect)
+  }, [router])
+
   const features = [
     {
       icon: DollarSign,
@@ -120,7 +130,7 @@ export default function BemVindoContent() {
               🎉 Sua conta foi confirmada com sucesso!
             </p>
             <p className="text-lg text-blue-200">
-              Agora você pode aproveitar todas as funcionalidades do <strong>FinancePRO</strong>
+              Agora faça seu <strong>login</strong> para começar a usar o <strong>FinancePRO</strong>
             </p>
           </div>
 
@@ -145,61 +155,42 @@ export default function BemVindoContent() {
             ))}
           </div>
 
-          {/* Seção de Primeiros Passos */}
+          {/* Próximo Passo */}
           <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-8 shadow-xl mb-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
-              🚀 Seus Primeiros Passos
+              🔐 Próximo Passo: Fazer Login
             </h2>
             
-            <div className="grid md:grid-cols-3 gap-6">
-              <div className="text-center">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <span className="text-blue-600 font-bold text-lg">1</span>
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Faça seu Login</h3>
-                <p className="text-sm text-gray-600">
-                  Acesse sua conta com o email e senha cadastrados
-                </p>
+            <div className="text-center">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-blue-600 font-bold text-2xl">🔑</span>
               </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">Entre na sua conta</h3>
+              <p className="text-gray-600 mb-4">
+                Use o email e senha que você cadastrou para acessar o FinancePRO
+              </p>
               
-              <div className="text-center">
-                <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <span className="text-purple-600 font-bold text-lg">2</span>
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Configure seu Perfil</h3>
-                <p className="text-sm text-gray-600">
-                  Complete suas informações pessoais
-                </p>
-              </div>
-              
-              <div className="text-center">
-                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <span className="text-green-600 font-bold text-lg">3</span>
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Comece a Usar</h3>
-                <p className="text-sm text-gray-600">
-                  Adicione suas primeiras transações
+              {/* Contador visual */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <p className="text-sm text-blue-700">
+                  ⏱️ Você será redirecionado automaticamente para o login em alguns segundos...
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Botões de Ação */}
+          {/* Botão de Ação */}
           <div className="text-center space-y-4">
             <Link
-              href="/login?welcome=true"
-              className="inline-flex items-center gap-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+              href="/login?from=welcome"
+              className="inline-flex items-center gap-3 bg-gradient-to-r from-green-600 to-blue-600 text-white px-12 py-5 rounded-xl font-bold text-xl hover:from-green-700 hover:to-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 animate-pulse"
             >
-              <CheckCircle2 className="h-5 w-5" />
-              Fazer Login Agora
-              <ArrowRight className="h-5 w-5" />
+              🔑 Entrar na Minha Conta
+              <ArrowRight className="h-6 w-6" />
             </Link>
             
             <p className="text-blue-100 text-sm">
-              Ou explore mais sobre o
-              <Link href="/sobre" className="text-yellow-300 hover:text-yellow-200 underline ml-1">
-                FinancePRO
-              </Link>
+              Ou aguarde o redirecionamento automático
             </p>
           </div>
 
@@ -212,11 +203,11 @@ export default function BemVindoContent() {
                 <Star className="h-5 w-5 text-yellow-300 fill-current" />
               </div>
               <h3 className="text-xl font-semibold text-white mb-2">
-                Sua jornada financeira começa agora!
+                Sua jornada financeira está prestes a começar!
               </h3>
               <p className="text-blue-100">
-                Estamos aqui para te ajudar a alcançar seus objetivos financeiros. 
-                Vamos transformar sua relação com o dinheiro! 💪
+                Após fazer login, você terá acesso a todas as ferramentas para
+                transformar sua relação com o dinheiro! 💪
               </p>
             </div>
           </div>
