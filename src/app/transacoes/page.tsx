@@ -4,12 +4,15 @@ import { useState } from 'react'
 import { Plus, Search, Filter, Download, Calendar, X } from 'lucide-react'
 import { useFinancial } from '@/context/financial-context'
 import { NewTransactionModal } from '@/components/new-transaction-modal'
+import { TransactionPrerequisitesGuide } from '@/components/transaction-prerequisites-guide'
+import { useTransactionPrerequisites } from '@/hooks/use-transaction-prerequisites'
 import { ProtectedRoute } from '@/components/protected-route'
 
 export default function TransacoesPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('todas')
   const [showNewTransactionModal, setShowNewTransactionModal] = useState(false)
+  const [showPrerequisitesGuide, setShowPrerequisitesGuide] = useState(false)
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
   const [dateFilter, setDateFilter] = useState({
     startDate: '',
@@ -21,9 +24,25 @@ export default function TransacoesPage() {
     min: '',
     max: ''
   })
+  
   const { transactions, cards, categories, getFinancialSummary } = useFinancial()
+  const { canCreateTransaction } = useTransactionPrerequisites()
 
   const { receitas, despesas, saldo } = getFinancialSummary()
+
+  // Função para lidar com o clique no botão Nova Transação
+  const handleNewTransactionClick = () => {
+    if (canCreateTransaction) {
+      setShowNewTransactionModal(true)
+    } else {
+      setShowPrerequisitesGuide(true)
+    }
+  }
+
+  // Função para continuar para o modal de transação após o guia
+  const handleContinueToTransaction = () => {
+    setShowNewTransactionModal(true)
+  }
 
   const transacoesFiltradas = transactions.filter(transacao => {
     const categoryName = transacao.category?.name || ''
@@ -108,27 +127,23 @@ export default function TransacoesPage() {
           <title>Relatório de Transações - FinancePRO</title>
           <style>
             body { font-family: Arial, sans-serif; margin: 20px; }
-            .header { text-align: center; margin-bottom: 30px; }
-            .summary { background: #f5f5f5; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
+            h1 { color: #333; text-align: center; }
             table { width: 100%; border-collapse: collapse; margin-top: 20px; }
             th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background-color: #4F46E5; color: white; }
-            tr:nth-child(even) { background-color: #f2f2f2; }
-            .income { color: #059669; font-weight: bold; }
-            .expense { color: #DC2626; font-weight: bold; }
+            th { background-color: #f2f2f2; }
+            .income { color: green; }
+            .expense { color: red; }
+            .summary { margin-bottom: 20px; padding: 15px; background-color: #f9f9f9; border-radius: 5px; }
           </style>
         </head>
         <body>
-          <div class="header">
-            <h1>FinancePRO - Relatório de Transações</h1>
-            <p>Gerado em: ${new Date().toLocaleDateString('pt-BR')}</p>
-          </div>
+          <h1>Relatório de Transações - FinancePRO</h1>
           <div class="summary">
-            <h3>Resumo Financeiro</h3>
+            <p><strong>Período:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
+            <p><strong>Total de Transações:</strong> ${transacoesFiltradas.length}</p>
             <p><strong>Receitas:</strong> ${formatarValor(receitas)}</p>
             <p><strong>Despesas:</strong> ${formatarValor(despesas)}</p>
             <p><strong>Saldo:</strong> ${formatarValor(saldo)}</p>
-            <p><strong>Total de Transações:</strong> ${transacoesFiltradas.length}</p>
           </div>
           <table>
             <thead>
@@ -190,11 +205,16 @@ export default function TransacoesPage() {
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold text-gray-900">Transações</h1>
           <button 
-            onClick={() => setShowNewTransactionModal(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+            onClick={handleNewTransactionClick}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all font-medium ${
+              canCreateTransaction 
+                ? 'bg-blue-600 text-white hover:bg-blue-700 transform hover:scale-105' 
+                : 'bg-orange-500 text-white hover:bg-orange-600 animate-pulse'
+            }`}
+            title={canCreateTransaction ? 'Criar nova transação' : 'Configure categorias e cartões primeiro'}
           >
             <Plus className="h-4 w-4" />
-            <span>Nova Transação</span>
+            <span>{canCreateTransaction ? 'Nova Transação' : 'Começar Transações'}</span>
           </button>
         </div>
 
@@ -231,6 +251,27 @@ export default function TransacoesPage() {
           </div>
         </div>
 
+        {/* Alert de pré-requisitos se necessário */}
+        {!canCreateTransaction && (
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+            <div className="flex items-center">
+              <div className="text-orange-600 mr-3">⚠️</div>
+              <div className="flex-1">
+                <h3 className="text-sm font-medium text-orange-800">Configuração necessária</h3>
+                <p className="text-sm text-orange-700 mt-1">
+                  Para criar transações você precisa ter pelo menos uma categoria e um cartão/conta cadastrados.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowPrerequisitesGuide(true)}
+                className="bg-orange-600 text-white px-3 py-1 rounded text-sm hover:bg-orange-700 transition-colors"
+              >
+                Ver guia
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Filtros */}
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <div className="flex flex-col gap-4">
@@ -246,6 +287,7 @@ export default function TransacoesPage() {
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
+              
               <div className="flex gap-2">
                 <select
                   value={filtroTipo}
@@ -263,6 +305,7 @@ export default function TransacoesPage() {
                   <Filter className="h-4 w-4" />
                   <span>Filtros</span>
                 </button>
+                
                 <div className="relative">
                   <button 
                     onClick={() => {
@@ -294,27 +337,27 @@ export default function TransacoesPage() {
 
             {/* Filtros avançados */}
             {showAdvancedFilters && (
-              <div className="border-t pt-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="border-t pt-4 mt-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   {/* Filtro de Data */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Período</label>
-                    <div className="space-y-2">
-                      <input
-                        type="date"
-                        value={dateFilter.startDate}
-                        onChange={(e) => setDateFilter({...dateFilter, startDate: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                        placeholder="Data inicial"
-                      />
-                      <input
-                        type="date"
-                        value={dateFilter.endDate}
-                        onChange={(e) => setDateFilter({...dateFilter, endDate: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                        placeholder="Data final"
-                      />
-                    </div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Data Início</label>
+                    <input
+                      type="date"
+                      value={dateFilter.startDate}
+                      onChange={(e) => setDateFilter({...dateFilter, startDate: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Data Fim</label>
+                    <input
+                      type="date"
+                      value={dateFilter.endDate}
+                      onChange={(e) => setDateFilter({...dateFilter, endDate: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                    />
                   </div>
 
                   {/* Filtro de Categoria */}
@@ -387,41 +430,30 @@ export default function TransacoesPage() {
         </div>
 
         {/* Lista de Transações */}
-        <div className="bg-white rounded-lg shadow-sm border">
-          <div className="p-6 border-b">
-            <h3 className="text-lg font-semibold">
-              {transacoesFiltradas.length} transação(ões) encontrada(s)
-            </h3>
-          </div>
-          
+        <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
           {transacoesFiltradas.length > 0 ? (
-            <div className="divide-y">
+            <div className="divide-y divide-gray-200">
               {transacoesFiltradas.map((transacao) => (
-                <div key={transacao.id} className="p-6 hover:bg-gray-50">
+                <div key={transacao.id} className="p-6 hover:bg-gray-50 transition-colors">
                   <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-3 h-3 rounded-full ${
-                          transacao.type === 'income' ? 'bg-green-500' : 'bg-red-500'
-                        }`}></div>
-                        <div>
-                          <p className="font-medium text-gray-900">{transacao.description}</p>
-                          <div className="flex items-center space-x-4 mt-1 text-sm text-gray-500">
-                            <span>{transacao.category?.name || 'Sem categoria'}</span>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-medium text-gray-900">{transacao.description}</h3>
+                      <div className="mt-1 flex items-center space-x-4 text-sm text-gray-500">
+                        <span className="flex items-center">
+                          <span className="inline-block w-2 h-2 rounded-full mr-2" 
+                                style={{ backgroundColor: transacao.category?.color || '#gray' }}></span>
+                          {transacao.category?.name || 'Sem categoria'}
+                        </span>
+                        <span>•</span>
+                        <span>{getCardName(transacao.card_id)}</span>
+                        <span>•</span>
+                        <span>{formatarData(transacao.transaction_date)}</span>
+                        {transacao.is_recurring && (
+                          <>
                             <span>•</span>
-                            <span>{getCardName(transacao.card_id)}</span>
-                            <span>•</span>
-                            <span>{formatarData(transacao.transaction_date)}</span>
-                            {transacao.is_recurring && (
-                              <>
-                                <span>•</span>
-                                <span className="text-purple-600 flex items-center">
-                                  🔄 Recorrente
-                                </span>
-                              </>
-                            )}
-                          </div>
-                        </div>
+                            <span className="text-purple-600">🔄 Recorrente</span>
+                          </>
+                        )}
                       </div>
                     </div>
                     <div className={`text-right font-semibold text-lg ${
@@ -444,19 +476,25 @@ export default function TransacoesPage() {
                 }
               </p>
               <button 
-                onClick={() => setShowNewTransactionModal(true)}
+                onClick={handleNewTransactionClick}
                 className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
               >
-                Adicionar Primeira Transação
+                {canCreateTransaction ? 'Adicionar Primeira Transação' : 'Configurar Pré-requisitos'}
               </button>
             </div>
           )}
         </div>
 
-        {/* Modal */}
+        {/* Modais */}
         <NewTransactionModal
           isOpen={showNewTransactionModal}
           onClose={() => setShowNewTransactionModal(false)}
+        />
+
+        <TransactionPrerequisitesGuide
+          isOpen={showPrerequisitesGuide}
+          onClose={() => setShowPrerequisitesGuide(false)}
+          onContinueToTransaction={handleContinueToTransaction}
         />
       </div>
     </ProtectedRoute>
