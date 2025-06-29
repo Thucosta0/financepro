@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/context/auth-context'
 import { useSubscription } from '@/hooks/use-subscription'
@@ -9,7 +9,8 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Check, Crown, Zap, Star, TrendingUp, Shield, Sparkles, Users, ArrowRight, Calendar, AlertCircle } from 'lucide-react'
 
-export default function PlanosPage() {
+// Componente que usa useSearchParams
+function PlanosContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user } = useAuth()
@@ -538,5 +539,21 @@ export default function PlanosPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+// Componente principal com Suspense boundary
+export default function PlanosPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando planos...</p>
+        </div>
+      </div>
+    }>
+      <PlanosContent />
+    </Suspense>
   )
 } 
