@@ -202,13 +202,24 @@ export const signUp = async (email: string, password: string, name: string, user
   // Se o usuário foi criado com sucesso e temos username, atualizar o perfil
   if (data.user && username) {
     try {
-      await supabase
+      console.log('🔄 Tentando salvar username no perfil:', username)
+      
+      // Aguardar um momento para o trigger criar o perfil primeiro
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      const { data: updateResult, error: updateError } = await supabase
         .from('profiles')
         .update({ username })
         .eq('id', data.user.id)
-      console.log('✅ Username atualizado no perfil:', username)
+        .select()
+      
+      if (updateError) {
+        console.error('❌ Erro ao atualizar username:', updateError)
+      } else {
+        console.log('✅ Username salvo com sucesso:', updateResult)
+      }
     } catch (profileError) {
-      console.error('Error updating profile with username:', profileError)
+      console.error('❌ Erro ao salvar username no perfil:', profileError)
     }
   }
   
