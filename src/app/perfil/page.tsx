@@ -476,7 +476,7 @@ export default function PerfilPage() {
                       value={formData.username}
                       onChange={(e) => setFormData({...formData, username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '')})}
                       className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                      placeholder="seu_usuario (opcional)"
+                      placeholder="@seu_usuario (opcional)"
                       disabled={isSaving}
                       maxLength={20}
                     />

@@ -440,7 +440,7 @@ export default function LoginPage() {
                         value={formData.emailOrUsername}
                         onChange={(e) => setFormData({...formData, emailOrUsername: e.target.value})}
                         className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 hover:border-blue-300 focus:scale-[1.02] bg-white hover:bg-blue-50/30 focus:bg-blue-50/50"
-                        placeholder="email@exemplo.com ou seu_usuario"
+                        placeholder="email@exemplo.com ou @seu_usuario"
                         disabled={isLoading}
                       />
                     </div>

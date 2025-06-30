@@ -461,7 +461,7 @@ export default function CadastroPage() {
                       value={formData.username}
                       onChange={(e) => setFormData({...formData, username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '')})}
                       className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 hover:border-blue-300 focus:scale-[1.02] bg-white hover:bg-blue-50/30 focus:bg-blue-50/50"
-                      placeholder="seu_usuario"
+                      placeholder="@seu_usuario"
                       disabled={isLoading}
                       maxLength={20}
                     />
