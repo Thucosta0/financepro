@@ -15,19 +15,32 @@ import { Plus, TrendingUp, TrendingDown, DollarSign, Hash, AlertTriangle, CheckC
 export default function DashboardPage() {
   const router = useRouter()
   const { user } = useAuth()
-  const { transactions, categories, cards, getFinancialSummary } = useFinancial()
+  const { transactions, categories, cards, getFinancialSummary, isLoading } = useFinancial()
   const { canPerformAction, getStatusText, isInTrial, isTrialExpired, getTrialDaysRemaining } = useSubscription()
   
   const [showNewTransactionModal, setShowNewTransactionModal] = useState(false)
   const [showRecurringModal, setShowRecurringModal] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(false)
 
-  // Detectar se é uma conta nova (sem categorias)
+  // Detectar se precisa de configuração inicial
   useEffect(() => {
-    if (categories.length === 0 && !isTrialExpired()) {
-      setShowOnboarding(true)
+    // Só verificar onboarding após os dados carregarem
+    if (!isLoading && !isTrialExpired()) {
+      const needsConfiguration = categories.length === 0 || 
+                                categories.filter(c => c.type === 'expense').length === 0 ||
+                                cards.length === 0
+
+      if (needsConfiguration && categories.length === 0) {
+        console.log('🎯 [ONBOARDING] Exibindo wizard - sistema não configurado')
+        console.log('📊 [DEBUG] Categorias:', categories.length, 'Cartões:', cards.length)
+        setShowOnboarding(true)
+      } else {
+        console.log('✅ [ONBOARDING] Sistema configurado - ocultando wizard')
+        console.log('📊 [DEBUG] Categorias:', categories.length, 'Cartões:', cards.length)
+        setShowOnboarding(false)
+      }
     }
-  }, [categories, isTrialExpired])
+  }, [categories, cards, isTrialExpired, isLoading])
 
   const summary = getFinancialSummary()
 
@@ -96,6 +109,20 @@ export default function DashboardPage() {
       action: () => router.push('/categorias')
     }
   ]
+
+  // Mostrar loading enquanto carrega dados
+  if (isLoading) {
+    return (
+      <ProtectedRoute>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Carregando seus dados financeiros...</p>
+          </div>
+        </div>
+      </ProtectedRoute>
+    )
+  }
 
   return (
     <ProtectedRoute>
