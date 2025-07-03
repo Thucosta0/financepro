@@ -269,63 +269,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Visão Geral Detalhada */}
+        {/* Status do Sistema e Últimas Transações */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Resumo Detalhado */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h3 className="text-lg font-semibold mb-4">Visão Geral Detalhada</h3>
-              
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center p-4 bg-green-50 rounded-lg">
-                  <TrendingUp className="h-6 w-6 text-green-600 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">Receitas</p>
-                  <p className="font-semibold text-green-600">
-                    {new Intl.NumberFormat('pt-BR', {
-                      style: 'currency',
-                      currency: 'BRL'
-                    }).format(summary.receitas)}
-                  </p>
-                </div>
-
-                <div className="text-center p-4 bg-red-50 rounded-lg">
-                  <TrendingDown className="h-6 w-6 text-red-600 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">Despesas</p>
-                  <p className="font-semibold text-red-600">
-                    {new Intl.NumberFormat('pt-BR', {
-                      style: 'currency',
-                      currency: 'BRL'
-                    }).format(summary.despesas)}
-                  </p>
-                </div>
-
-                <div className="text-center p-4 bg-blue-50 rounded-lg">
-                  <DollarSign className="h-6 w-6 text-blue-600 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">Saldo</p>
-                  <p className={`font-semibold ${summary.saldo >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                    {new Intl.NumberFormat('pt-BR', {
-                      style: 'currency',
-                      currency: 'BRL'
-                    }).format(summary.saldo)}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    = {new Intl.NumberFormat('pt-BR', {
-                      style: 'currency',
-                      currency: 'BRL'
-                    }).format(summary.receitas)} em relação ao mês anterior
-                  </p>
-                </div>
-
-                <div className="text-center p-4 bg-purple-50 rounded-lg">
-                  <Hash className="h-6 w-6 text-purple-600 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">Meta de Economia</p>
-                  <p className="font-semibold text-purple-600">R$ 0,00</p>
-                  <p className="text-xs text-gray-500 mt-1">10% do saldo atual</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
           {/* Status do Sistema */}
           <div className="bg-white rounded-lg shadow-sm border p-6">
             <h3 className="text-lg font-semibold mb-4">Status do Sistema</h3>
@@ -363,14 +308,9 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
-        </div>
 
-        {/* Análise Visual Avançada */}
-        <Charts />
-
-        {/* Últimas Transações */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white rounded-lg shadow-sm border">
+          {/* Últimas Transações */}
+          <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border">
             <div className="p-6 border-b">
               <h3 className="text-lg font-semibold">Últimas Transações</h3>
             </div>
@@ -410,31 +350,10 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
-
-          <div className="bg-white rounded-lg shadow-sm border">
-            <div className="p-6 border-b">
-              <h3 className="text-lg font-semibold">Status do Sistema</h3>
-            </div>
-            <div className="p-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Categorias</span>
-                  <span className="font-semibold">{categories.length} categorias</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Cartões Ativos</span>
-                  <span className="font-semibold">{cards.filter(c => c.is_active).length} cartão{cards.filter(c => c.is_active).length !== 1 ? 'es' : ''}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Pronto para Transações</span>
-                  <span className={`font-semibold ${canCreateTransaction ? 'text-green-600' : 'text-red-600'}`}>
-                    {canCreateTransaction ? 'Sim' : 'Não'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
+
+        {/* Análise Visual Avançada */}
+        <Charts />
 
         {/* Modais */}
         <NewTransactionModal

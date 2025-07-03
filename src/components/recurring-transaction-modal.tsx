@@ -43,7 +43,7 @@ export function RecurringTransactionModal({ isOpen, onClose }: RecurringTransact
     }
   }, [isOpen, isTrialExpired, onClose])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
     // Verificar novamente se o trial expirou antes de submeter
@@ -77,21 +77,26 @@ export function RecurringTransactionModal({ isOpen, onClose }: RecurringTransact
       is_active: true
     }
 
-    addRecurringTransaction(recurringData)
+    try {
+      await addRecurringTransaction(recurringData)
+      
+      // Reset form
+      setFormData({
+        description: '',
+        amount: '',
+        type: 'expense',
+        category: '',
+        card: '',
+        frequency: 'monthly',
+        startDate: new Date().toISOString().split('T')[0],
+        endDate: ''
+      })
 
-    // Reset form
-    setFormData({
-      description: '',
-      amount: '',
-      type: 'expense',
-      category: '',
-      card: '',
-      frequency: 'monthly',
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: ''
-    })
-
-    onClose()
+      onClose()
+    } catch (error) {
+      console.error('Erro ao criar transação recorrente:', error)
+      alert('Erro ao criar transação recorrente. Tente novamente.')
+    }
   }
 
   const formatCardName = (card: any) => {
@@ -251,7 +256,7 @@ export function RecurringTransactionModal({ isOpen, onClose }: RecurringTransact
               >
                 <option value="">Selecione uma categoria</option>
                 {filteredCategories.map((category) => (
-                  <option key={category.id} value={category.name}>
+                  <option key={category.id} value={category.id}>
                     {category.icon} {category.name}
                   </option>
                 ))}

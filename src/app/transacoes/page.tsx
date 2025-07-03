@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Search, Filter, Download, Calendar, X, AlertTriangle } from 'lucide-react'
+import { Plus, Search, Filter, Download, Calendar, X, AlertTriangle, Trash2 } from 'lucide-react'
 import { useFinancial } from '@/context/financial-context'
 import { useSubscription } from '@/hooks/use-subscription'
 import { NewTransactionModal } from '@/components/new-transaction-modal'
@@ -26,7 +26,7 @@ export default function TransacoesPage() {
     max: ''
   })
   
-  const { transactions, cards, categories, getFinancialSummary } = useFinancial()
+  const { transactions, cards, categories, getFinancialSummary, deleteTransaction } = useFinancial()
   const { canCreateTransaction } = useTransactionPrerequisites()
   const { canPerformAction, isTrialExpired } = useSubscription()
 
@@ -243,6 +243,27 @@ export default function TransacoesPage() {
     setCardFilter('')
     setAmountFilter({ min: '', max: '' })
     setShowAdvancedFilters(false)
+  }
+
+  const handleDeleteTransaction = async (transactionId: string, description: string) => {
+    if (isTrialExpired()) {
+      window.location.href = '/planos'
+      return
+    }
+    
+    if (!canPerformAction('transactions')) {
+      alert('Você não tem permissão para excluir transações.')
+      return
+    }
+    
+    if (confirm(`Tem certeza que deseja excluir a transação "${description}"?`)) {
+      try {
+        await deleteTransaction(transactionId)
+      } catch (error) {
+        console.error('Erro ao excluir transação:', error)
+        alert('Erro ao excluir transação. Tente novamente.')
+      }
+    }
   }
 
   return (
@@ -521,10 +542,24 @@ export default function TransacoesPage() {
                         )}
                       </div>
                     </div>
-                    <div className={`text-right font-semibold text-lg ${
-                      transacao.type === 'income' ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {transacao.type === 'income' ? '+' : '-'}{formatarValor(transacao.amount)}
+                    <div className="flex items-center space-x-4">
+                      <div className={`text-right font-semibold text-lg ${
+                        transacao.type === 'income' ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {transacao.type === 'income' ? '+' : '-'}{formatarValor(transacao.amount)}
+                      </div>
+                      <button
+                        onClick={() => handleDeleteTransaction(transacao.id, transacao.description)}
+                        className={`p-2 rounded-lg transition-colors ${
+                          isTrialExpired() 
+                            ? 'text-gray-400 cursor-not-allowed' 
+                            : 'text-red-600 hover:bg-red-50'
+                        }`}
+                        title={isTrialExpired() ? 'Trial expirado' : 'Excluir transação'}
+                        disabled={isTrialExpired()}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
                   </div>
                 </div>

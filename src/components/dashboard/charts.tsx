@@ -44,8 +44,8 @@ export function ExpenseByCategoryChart({ transactions }: ChartsProps) {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(value)
   }
 
@@ -159,8 +159,8 @@ export function IncomeVsExpenseChart({ transactions }: ChartsProps) {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(value)
   }
 
@@ -218,33 +218,33 @@ export function IncomeVsExpenseChart({ transactions }: ChartsProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Estatísticas Resumidas */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border">
         <div className="text-center">
-          <div className="text-2xl font-bold text-green-600">{formatValue(totalReceitas)}</div>
-          <div className="text-sm text-gray-600">Total Receitas</div>
+          <div className="text-lg font-bold text-green-600">{formatValue(totalReceitas)}</div>
+          <div className="text-xs text-gray-600">Total Receitas</div>
           <div className="text-xs text-gray-500">Média: {formatValue(mediaReceitas)}</div>
         </div>
         <div className="text-center">
-          <div className="text-2xl font-bold text-red-600">{formatValue(totalDespesas)}</div>
-          <div className="text-sm text-gray-600">Total Despesas</div>
+          <div className="text-lg font-bold text-red-600">{formatValue(totalDespesas)}</div>
+          <div className="text-xs text-gray-600">Total Despesas</div>
           <div className="text-xs text-gray-500">Média: {formatValue(mediaDespesas)}</div>
         </div>
         <div className="text-center">
-          <div className={`text-2xl font-bold ${saldoTotal >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+          <div className={`text-lg font-bold ${saldoTotal >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
             {formatValue(saldoTotal)}
           </div>
-          <div className="text-sm text-gray-600">Saldo Total</div>
+          <div className="text-xs text-gray-600">Saldo Total</div>
           <div className={`text-xs ${saldoTotal >= 0 ? 'text-blue-500' : 'text-orange-500'}`}>
             {saldoTotal >= 0 ? '📈 Positivo' : '📉 Negativo'}
           </div>
         </div>
         <div className="text-center">
-          <div className="text-2xl font-bold text-purple-600">
+          <div className="text-lg font-bold text-purple-600">
             {sortedData.length}
           </div>
-          <div className="text-sm text-gray-600">Meses Analisados</div>
+          <div className="text-xs text-gray-600">Meses Analisados</div>
           <div className="text-xs text-gray-500">
             {totalReceitas > 0 ? formatPercent((saldoTotal / totalReceitas) * 100) : '0%'} economia
           </div>
@@ -254,7 +254,7 @@ export function IncomeVsExpenseChart({ transactions }: ChartsProps) {
       {/* Gráfico Principal */}
       <div className="h-80 lg:h-96">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={sortedData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+          <BarChart data={sortedData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }} maxBarSize={40}>
             <defs>
               <linearGradient id="receitasGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
@@ -300,8 +300,8 @@ export function IncomeVsExpenseChart({ transactions }: ChartsProps) {
       </div>
 
       {/* Insights Rápidos */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-        <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+        <div className="p-2 bg-green-50 border border-green-200 rounded-lg">
           <div className="flex items-center space-x-2">
             <span className="text-green-600">📊</span>
             <span className="font-medium text-green-800">Melhor Mês</span>
@@ -321,7 +321,7 @@ export function IncomeVsExpenseChart({ transactions }: ChartsProps) {
           </div>
         </div>
 
-        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="p-2 bg-blue-50 border border-blue-200 rounded-lg">
           <div className="flex items-center space-x-2">
             <span className="text-blue-600">📈</span>
             <span className="font-medium text-blue-800">Tendência</span>
@@ -344,7 +344,7 @@ export function IncomeVsExpenseChart({ transactions }: ChartsProps) {
           </div>
         </div>
 
-        <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
+        <div className="p-2 bg-purple-50 border border-purple-200 rounded-lg">
           <div className="flex items-center space-x-2">
             <span className="text-purple-600">🎯</span>
             <span className="font-medium text-purple-800">Meta Economia</span>
@@ -385,8 +385,8 @@ export function BalanceEvolutionChart({ transactions }: ChartsProps) {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(value)
   }
 
@@ -464,8 +464,8 @@ export function TopCategoriesChart({ transactions }: ChartsProps) {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(value)
   }
 
@@ -540,8 +540,8 @@ export function WeeklySpendingChart({ transactions }: ChartsProps) {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(value)
   }
 

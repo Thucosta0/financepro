@@ -33,6 +33,7 @@ interface FinancialContextType {
   updateRecurringTransaction: (id: string, transaction: Partial<RecurringTransaction>) => Promise<void>
   deleteRecurringTransaction: (id: string) => Promise<void>
   executeRecurringTransaction: (id: string) => Promise<void>
+  processRecurringTransactions: () => Promise<void>
   
   // Orçamentos
   addBudget: (budget: Omit<Budget, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => Promise<void>
@@ -72,6 +73,26 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
       setBudgets([])
     }
   }, [user])
+
+  // Processar transações recorrentes vencidas uma vez após carregar os dados
+  useEffect(() => {
+    if (!user || isLoading || recurringTransactions.length === 0) return
+    
+    // Processar imediatamente após o carregamento
+    processRecurringTransactions()
+  }, [user, isLoading, recurringTransactions])
+
+  // Processar transações recorrentes periodicamente
+  useEffect(() => {
+    if (!user || isLoading || recurringTransactions.length === 0) return
+    
+    // Processar transações recorrentes a cada 10 minutos
+    const interval = setInterval(async () => {
+      await processRecurringTransactions()
+    }, 10 * 60 * 1000) // 10 minutos
+    
+    return () => clearInterval(interval)
+  }, [user, isLoading, recurringTransactions])
 
   const loadData = useCallback(async () => {
     if (!user) return
@@ -486,6 +507,34 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     })
   }
 
+  const processRecurringTransactions = async () => {
+    if (!user) return
+    
+    const today = new Date().toISOString().split('T')[0]
+    
+    // Buscar transações recorrentes que precisam ser executadas
+    const dueRecurringTransactions = recurringTransactions.filter(
+      rt => rt.is_active && rt.next_execution_date <= today
+    )
+    
+    console.log(`Processando ${dueRecurringTransactions.length} transações recorrentes vencidas`)
+    
+    if (dueRecurringTransactions.length === 0) return
+    
+    // Executar todas as transações recorrentes vencidas
+    for (const rt of dueRecurringTransactions) {
+      try {
+        await executeRecurringTransaction(rt.id)
+        console.log(`Transação recorrente executada: ${rt.description}`)
+      } catch (error) {
+        console.error(`Erro ao executar transação recorrente ${rt.description}:`, error)
+      }
+    }
+    
+    // Recarregar transações após executar as recorrentes para atualizar o gráfico
+    await loadTransactions()
+  }
+
   // === ORÇAMENTOS ===
   const addBudget = async (budgetData: Omit<Budget, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
     if (!user) return
@@ -591,6 +640,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
       updateRecurringTransaction,
       deleteRecurringTransaction,
       executeRecurringTransaction,
+      processRecurringTransactions,
       addBudget,
       updateBudget,
       deleteBudget,

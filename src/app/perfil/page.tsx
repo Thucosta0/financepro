@@ -6,6 +6,8 @@ import { ProtectedRoute } from '@/components/protected-route'
 import { supabase } from '@/lib/supabase-client'
 import { User, Mail, AtSign, Save, Camera, ArrowLeft, AlertCircle, CheckCircle, Lock, Eye, EyeOff, Shield } from 'lucide-react'
 import Link from 'next/link'
+import { Input } from '@/components/ui/input'
+import { UsernameInput } from '@/components/ui/username-input'
 
 interface UserProfile {
   id: string
@@ -65,7 +67,7 @@ export default function PerfilPage() {
         setProfile(data)
         setFormData({
           name: data.name || '',
-          username: data.username || '',
+          username: (data.username || '').replace(/@/g, ''),
           email: data.email || ''
         })
       }
@@ -465,22 +467,19 @@ export default function PerfilPage() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                {/* Username */}
+                <div className="mb-6">
+                  <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
                     Nome de usuário
                   </label>
-                  <div className="relative">
-                    <AtSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <input
-                      type="text"
-                      value={formData.username}
-                      onChange={(e) => setFormData({...formData, username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '')})}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                      placeholder="@seu_usuario (opcional)"
-                      disabled={isSaving}
-                      maxLength={20}
-                    />
-                  </div>
+                  <UsernameInput
+                    id="username"
+                    name="username"
+                    value={formData.username}
+                    onChange={(e) => setFormData({ ...formData, username: e.target.value.replace(/@/g, '') })}
+                    placeholder="seu_username"
+                    className="w-full"
+                  />
                   <p className="text-xs text-gray-500 mt-1">
                     Permite login alternativo. Apenas letras, números e underscore.
                   </p>

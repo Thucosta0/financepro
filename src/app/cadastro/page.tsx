@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase-client'
 import { Eye, EyeOff, User, Mail, Lock, ArrowLeft, AlertCircle, CheckCircle, AtSign, Linkedin, Github, ExternalLink, MailCheck, RotateCcw, Clock } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { UsernameInput } from '@/components/ui/username-input'
 
 export default function CadastroPage() {
   const [formData, setFormData] = useState({
@@ -449,25 +451,22 @@ export default function CadastroPage() {
                   </div>
                 </div>
 
-                <div className="animate-slide-up delay-400">
-                  <label className="block text-sm font-medium text-gray-700 mb-2 transition-all duration-300">
+                {/* Username */}
+                <div className="mb-4">
+                  <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
                     Nome de usuário
                   </label>
-                  <div className="relative group">
-                    <AtSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 transition-all duration-300 group-focus-within:text-blue-500 group-focus-within:scale-110" />
-                    <input
-                      type="text"
-                      required
-                      value={formData.username}
-                      onChange={(e) => setFormData({...formData, username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '')})}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 hover:border-blue-300 focus:scale-[1.02] bg-white hover:bg-blue-50/30 focus:bg-blue-50/50"
-                      placeholder="@seu_usuario"
-                      disabled={isLoading}
-                      maxLength={20}
-                    />
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1 transition-all duration-300">
-                    Apenas letras, números e underscore. Mínimo 3 caracteres.
+                  <UsernameInput
+                    id="username"
+                    name="username"
+                    value={formData.username}
+                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                    placeholder="seu_username"
+                    required
+                    className="w-full"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Permite login alternativo. Apenas letras, números e underscore.
                   </p>
                 </div>
 
