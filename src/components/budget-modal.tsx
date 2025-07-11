@@ -4,13 +4,15 @@ import { useState, useEffect } from 'react'
 import { X, Target, Calendar, DollarSign } from 'lucide-react'
 import { useFinancial } from '@/context/financial-context'
 import { useSubscription } from '@/hooks/use-subscription'
+import type { Category } from '@/lib/supabase-client'
 
 interface BudgetModalProps {
   isOpen: boolean
   onClose: () => void
+  selectedCategory?: Category | null
 }
 
-export function BudgetModal({ isOpen, onClose }: BudgetModalProps) {
+export function BudgetModal({ isOpen, onClose, selectedCategory }: BudgetModalProps) {
   const { categories, budgets, addBudget, updateBudget } = useFinancial()
   const { isTrialExpired } = useSubscription()
   const [formData, setFormData] = useState({
@@ -30,17 +32,17 @@ export function BudgetModal({ isOpen, onClose }: BudgetModalProps) {
     }
   }, [isOpen, isTrialExpired, onClose])
 
-  // Reset form quando modal abre
+  // Reset form quando modal abre e pré-seleciona categoria se fornecida
   useEffect(() => {
     if (isOpen) {
       setFormData({
-        category_id: '',
+        category_id: selectedCategory?.id || '',
         amount: '',
         month: new Date().getMonth() + 1,
         year: new Date().getFullYear()
       })
     }
-  }, [isOpen])
+  }, [isOpen, selectedCategory])
 
   const expenseCategories = categories.filter(c => c.type === 'expense')
 
@@ -106,7 +108,7 @@ export function BudgetModal({ isOpen, onClose }: BudgetModalProps) {
     return meses[mes - 1]
   }
 
-  const selectedCategory = categories.find(c => c.id === formData.category_id)
+  const foundCategory = categories.find(c => c.id === formData.category_id)
 
   if (!isOpen) return null
 
@@ -224,14 +226,14 @@ export function BudgetModal({ isOpen, onClose }: BudgetModalProps) {
             </div>
 
             {/* Preview */}
-            {selectedCategory && formData.amount && (
+            {foundCategory && formData.amount && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="flex items-center space-x-3 mb-2">
-                  <span className="text-xl">{selectedCategory.icon}</span>
+                  <span className="text-xl">{foundCategory.icon}</span>
                   <div>
                     <h4 className="font-medium text-blue-900">Preview do Orçamento</h4>
                     <p className="text-sm text-blue-700">
-                      {selectedCategory.name} • {formatarMes(formData.month)} de {formData.year}
+                      {foundCategory.name} • {formatarMes(formData.month)} de {formData.year}
                     </p>
                   </div>
                 </div>

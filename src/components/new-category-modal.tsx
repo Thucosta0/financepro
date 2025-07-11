@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X } from 'lucide-react'
+import { X, Target, DollarSign } from 'lucide-react'
 import { useFinancial } from '@/context/financial-context'
 import { useSubscription } from '@/hooks/use-subscription'
 import type { Category } from '@/lib/supabase-client'
@@ -29,7 +29,8 @@ export function NewCategoryModal({ isOpen, onClose, editingCategory }: NewCatego
     name: '',
     type: 'expense' as 'income' | 'expense',
     icon: '💰',
-    color: '#22c55e'
+    color: '#22c55e',
+    budget: ''
   })
 
   // Verificar trial expirado ao abrir modal
@@ -48,7 +49,8 @@ export function NewCategoryModal({ isOpen, onClose, editingCategory }: NewCatego
         name: editingCategory.name,
         type: editingCategory.type,
         icon: editingCategory.icon,
-        color: editingCategory.color
+        color: editingCategory.color,
+        budget: ''
       })
     } else {
       // Reset para nova categoria
@@ -56,7 +58,8 @@ export function NewCategoryModal({ isOpen, onClose, editingCategory }: NewCatego
         name: '',
         type: 'expense',
         icon: '💰',
-        color: '#22c55e'
+        color: '#22c55e',
+        budget: ''
       })
     }
   }, [editingCategory, isOpen])
@@ -74,13 +77,27 @@ export function NewCategoryModal({ isOpen, onClose, editingCategory }: NewCatego
       return
     }
 
+    // Validar orçamento se fornecido
+    if (formData.budget && parseFloat(formData.budget) <= 0) {
+      alert('O valor do orçamento deve ser maior que zero.')
+      return
+    }
+
     try {
+      // Preparar dados da categoria (sem o campo budget)
+      const { budget, ...categoryData } = formData
+      
       if (editingCategory) {
         // Editar categoria existente
-        await updateCategory(editingCategory.id, formData)
+        await updateCategory(editingCategory.id, categoryData)
       } else {
         // Criar nova categoria
-        await addCategory(formData)
+        await addCategory(categoryData)
+        
+        // Mostrar lembrete sobre orçamento se foi definido um valor
+        if (budget && formData.type === 'expense') {
+          alert(`Categoria "${formData.name}" criada! 🎯 Clique no ícone de alvo na categoria para definir o orçamento de ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(budget))}.`)
+        }
       }
 
       onClose()
@@ -182,6 +199,31 @@ export function NewCategoryModal({ isOpen, onClose, editingCategory }: NewCatego
                 ))}
               </div>
             </div>
+
+            {/* Campo de Orçamento - apenas para categorias de despesa */}
+            {formData.type === 'expense' && !editingCategory && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Orçamento Mensal (Opcional)
+                </label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.budget}
+                    onChange={(e) => setFormData({...formData, budget: e.target.value})}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    placeholder="0,00"
+                  />
+                </div>
+                <div className="flex items-center mt-2 text-sm text-blue-600 bg-blue-50 p-2 rounded">
+                  <Target className="h-4 w-4 mr-1 flex-shrink-0" />
+                  <span>Este valor será lembrado. Após criar a categoria, clique no ícone 🎯 para definir o orçamento.</span>
+                </div>
+              </div>
+            )}
 
             {/* Espaçamento extra para melhor scroll no mobile */}
             <div className="pb-4"></div>

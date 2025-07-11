@@ -4,10 +4,12 @@ import { useState, useEffect } from 'react'
 import { X, Repeat, Calendar, Clock, AlertTriangle } from 'lucide-react'
 import { useFinancial } from '@/context/financial-context'
 import { useSubscription } from '@/hooks/use-subscription'
+import type { RecurringTransaction } from '@/lib/supabase-client'
 
 interface RecurringTransactionModalProps {
   isOpen: boolean
   onClose: () => void
+  recurringTransaction?: RecurringTransaction | null
 }
 
 const frequencyOptions = [
@@ -18,8 +20,8 @@ const frequencyOptions = [
   { value: 'annually', label: 'Anual', icon: '🎯' }
 ]
 
-export function RecurringTransactionModal({ isOpen, onClose }: RecurringTransactionModalProps) {
-  const { categories, cards, addRecurringTransaction } = useFinancial()
+export function RecurringTransactionModal({ isOpen, onClose, recurringTransaction }: RecurringTransactionModalProps) {
+  const { categories, cards, addRecurringTransaction, updateRecurringTransaction } = useFinancial()
   const { canPerformAction, isTrialExpired } = useSubscription()
   const [formData, setFormData] = useState({
     description: '',
@@ -34,6 +36,35 @@ export function RecurringTransactionModal({ isOpen, onClose }: RecurringTransact
 
   const activeCards = cards.filter(card => card.is_active)
   const filteredCategories = categories.filter(cat => cat.type === formData.type)
+  const isEditing = !!recurringTransaction
+
+  // Preencher formulário quando for edição
+  useEffect(() => {
+    if (isOpen && recurringTransaction) {
+      setFormData({
+        description: recurringTransaction.description,
+        amount: recurringTransaction.amount.toString(),
+        type: recurringTransaction.type,
+        category: recurringTransaction.category_id,
+        card: recurringTransaction.card_id,
+        frequency: recurringTransaction.frequency,
+        startDate: recurringTransaction.start_date,
+        endDate: recurringTransaction.end_date || ''
+      })
+    } else if (isOpen && !recurringTransaction) {
+      // Reset para nova transação
+      setFormData({
+        description: '',
+        amount: '',
+        type: 'expense',
+        category: '',
+        card: '',
+        frequency: 'monthly',
+        startDate: new Date().toISOString().split('T')[0],
+        endDate: ''
+      })
+    }
+  }, [isOpen, recurringTransaction])
 
   // Verificar trial expirado quando o modal abrir
   useEffect(() => {
@@ -78,8 +109,14 @@ export function RecurringTransactionModal({ isOpen, onClose }: RecurringTransact
     }
 
     try {
-      await addRecurringTransaction(recurringData)
-      
+      if (isEditing && recurringTransaction) {
+        // Atualizar transação existente
+        await updateRecurringTransaction(recurringTransaction.id, recurringData)
+      } else {
+        // Criar nova transação
+        await addRecurringTransaction(recurringData)
+      }
+
       // Reset form
       setFormData({
         description: '',
@@ -94,8 +131,8 @@ export function RecurringTransactionModal({ isOpen, onClose }: RecurringTransact
 
       onClose()
     } catch (error) {
-      console.error('Erro ao criar transação recorrente:', error)
-      alert('Erro ao criar transação recorrente. Tente novamente.')
+      console.error(`Erro ao ${isEditing ? 'atualizar' : 'criar'} transação recorrente:`, error)
+      alert(`Erro ao ${isEditing ? 'atualizar' : 'criar'} transação recorrente. Tente novamente.`)
     }
   }
 
@@ -154,7 +191,9 @@ export function RecurringTransactionModal({ isOpen, onClose }: RecurringTransact
         <div className="flex items-center justify-between p-4 lg:p-6 border-b bg-gradient-to-r from-purple-600 to-blue-600 text-white lg:rounded-t-lg flex-shrink-0">
           <div className="flex items-center space-x-3">
             <Repeat className="h-6 w-6" />
-            <h3 className="text-lg lg:text-xl font-semibold">Transação Recorrente</h3>
+            <h3 className="text-lg lg:text-xl font-semibold">
+              {isEditing ? 'Editar' : 'Nova'} Transação Recorrente
+            </h3>
           </div>
           <button
             onClick={onClose}
@@ -340,7 +379,7 @@ export function RecurringTransactionModal({ isOpen, onClose }: RecurringTransact
             className="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 font-medium touch-manipulation"
             disabled={activeCards.length === 0 || filteredCategories.length === 0}
           >
-            Criar Transação Recorrente
+            {isEditing ? 'Atualizar' : 'Criar'} Transação Recorrente
           </button>
         </div>
       </div>

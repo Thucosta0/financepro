@@ -29,17 +29,13 @@ function PlanosContent() {
   }, [])
 
   const handleUpgrade = async () => {
-    console.log('🚀 Iniciando upgrade...')
-    
     if (!user) {
       router.push('/login')
       return
     }
 
     // Verificar se Stripe está configurado
-    console.log('🔍 Verificando configuração do Stripe...')
     const stripe = await getStripe()
-    console.log('✅ Stripe carregado:', !!stripe)
     
     if (!stripe) {
       console.error('❌ Stripe não configurado')

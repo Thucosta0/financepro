@@ -4,11 +4,6 @@ import { loadStripe } from '@stripe/stripe-js'
 // Verificar se as chaves estão configuradas
 const STRIPE_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 
-console.log('🔑 Stripe Keys Check (Client):', {
-  hasPublishableKey: !!STRIPE_PUBLISHABLE_KEY,
-  publishableKeyStart: STRIPE_PUBLISHABLE_KEY?.substring(0, 8)
-})
-
 // Para o cliente, só precisamos da chave pública
 const hasStripeKeys = !!STRIPE_PUBLISHABLE_KEY
 

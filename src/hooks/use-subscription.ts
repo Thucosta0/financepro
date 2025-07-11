@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase-client'
 import { useAuth } from '@/context/auth-context'
 
@@ -35,8 +35,8 @@ export const useSubscription = () => {
   const [error, setError] = useState<string | null>(null)
 
   // Calcular dados de subscription baseados no perfil do usuário
-  const calculateSubscription = async () => {
-    if (!user) return
+  const calculateSubscription = useCallback(async () => {
+    if (!user?.id) return
 
     try {
       setLoading(true)
@@ -85,9 +85,9 @@ export const useSubscription = () => {
         stripe_customer_id: null,
         stripe_subscription_id: null,
         cancel_at_period_end: false,
-        transactions_count: 0, // Pode ser calculado se necessário
-        categories_count: 0,   // Pode ser calculado se necessário
-        cards_count: 0,        // Pode ser calculado se necessário
+        transactions_count: 0,
+        categories_count: 0,
+        cards_count: 0,
         transactions_remaining: isTrialActive || hasProSubscription ? -1 : 0,
         categories_remaining: isTrialActive || hasProSubscription ? -1 : 0,
         cards_remaining: isTrialActive || hasProSubscription ? -1 : 0,
@@ -96,13 +96,6 @@ export const useSubscription = () => {
 
       setSubscription(subscriptionData)
       setError(null)
-
-      console.log('🎯 Subscription calculada:', {
-        daysSinceCreation,
-        trialDaysRemaining,
-        effectiveStatus,
-        userCreatedAt
-      })
 
     } catch (err) {
       console.error('Erro ao calcular subscription:', err)
@@ -136,10 +129,10 @@ export const useSubscription = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user?.id, user?.created_at])
 
   // Verificar se pode executar uma ação
-  const canPerformAction = (action: 'transactions' | 'categories' | 'cards'): boolean => {
+  const canPerformAction = useCallback((action: 'transactions' | 'categories' | 'cards'): boolean => {
     if (!subscription) return true // Durante loading, permitir
 
     // Se está em trial ou PRO, pode fazer tudo
@@ -154,31 +147,31 @@ export const useSubscription = () => {
     }
 
     return true
-  }
+  }, [subscription])
 
   // Verificar se é plano PRO
-  const isPro = (): boolean => {
+  const isPro = useCallback((): boolean => {
     return subscription?.plan_id === 'pro' && subscription?.effective_status === 'active_paid'
-  }
+  }, [subscription])
 
   // Verificar se está em trial
-  const isInTrial = (): boolean => {
+  const isInTrial = useCallback((): boolean => {
     return subscription?.effective_status === 'active_trial'
-  }
+  }, [subscription])
 
   // Verificar se trial expirou
-  const isTrialExpired = (): boolean => {
+  const isTrialExpired = useCallback((): boolean => {
     return subscription?.effective_status === 'expired'
-  }
+  }, [subscription])
 
   // Dias restantes do trial
-  const getTrialDaysRemaining = (): number => {
+  const getTrialDaysRemaining = useCallback((): number => {
     if (!subscription) return 30
     return subscription.trial_days_remaining
-  }
+  }, [subscription])
 
   // Obter status humanizado
-  const getStatusText = (): string => {
+  const getStatusText = useCallback((): string => {
     if (!subscription) return 'Carregando...'
 
     switch (subscription.effective_status) {
@@ -191,19 +184,18 @@ export const useSubscription = () => {
       default:
         return 'Trial disponível - 30 dias grátis'
     }
-  }
+  }, [subscription])
 
   // Funções simplificadas (mantidas para compatibilidade)
-  const incrementUsage = async (type: 'transactions' | 'categories' | 'cards') => {
-    // Implementação simplificada - apenas log
-    console.log(`Incrementando uso: ${type}`)
-  }
+  const incrementUsage = useCallback(async (type: 'transactions' | 'categories' | 'cards') => {
+    // Implementação futura se necessário
+  }, [])
 
-  const checkLimits = async (type: 'transactions' | 'categories' | 'cards'): Promise<boolean> => {
+  const checkLimits = useCallback(async (type: 'transactions' | 'categories' | 'cards'): Promise<boolean> => {
     return canPerformAction(type)
-  }
+  }, [canPerformAction])
 
-  const getLimits = (): UsageLimits => {
+  const getLimits = useCallback((): UsageLimits => {
     if (!subscription) {
       return { transactions: -1, categories: -1, cards: -1 }
     }
@@ -213,17 +205,17 @@ export const useSubscription = () => {
       categories: subscription.categories_remaining,
       cards: subscription.cards_remaining,
     }
-  }
+  }, [subscription])
 
-  const fetchSubscription = () => {
+  const fetchSubscription = useCallback(() => {
     calculateSubscription()
-  }
+  }, [calculateSubscription])
 
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       calculateSubscription()
     }
-  }, [user])
+  }, [user?.id, calculateSubscription])
 
   return {
     subscription,

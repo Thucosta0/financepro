@@ -1,97 +1,80 @@
 import { NextRequest, NextResponse } from 'next/server'
-import OpenAI from 'openai'
 
-// Configuração da chave API da OpenAI (via variável de ambiente)
-const apiKey = process.env.OPENAI_API_KEY
+interface FinancialData {
+  receitas: number
+  despesas: number
+  saldo: number
+  categorias: string
+}
 
-// Inicializar o cliente OpenAI
-let openai: OpenAI | null = null
-
-try {
-  if (apiKey && apiKey.startsWith('sk-')) {
-    openai = new OpenAI({
-      apiKey: apiKey,
-    })
-    console.log('✅ OpenAI API configurada com sucesso')
-  } else {
-    console.warn('⚠️ Chave OpenAI não configurada - Assistente IA desabilitado')
-  }
-} catch (error) {
-  console.error('❌ Erro ao inicializar OpenAI:', error)
+interface RequestBody {
+  message: string
+  financialData?: FinancialData
+  isForBudgetTip?: boolean
 }
 
 export async function POST(request: NextRequest) {
   try {
-    // Verificar se o OpenAI está configurado
-    if (!openai) {
-      console.error('❌ OpenAI não configurado')
-      return NextResponse.json(
-        { 
-          error: 'Assistente IA temporariamente indisponível. Tente novamente mais tarde.' 
-        },
-        { status: 503 }
-      )
-    }
+    const body: RequestBody = await request.json()
+    const { message, financialData, isForBudgetTip } = body
 
-    const { message, financialData } = await request.json()
-
-    // Contexto básico sempre presente
-    let systemPrompt = `Você é o FinanceGPT, um assistente financeiro especializado em educação financeira pessoal. Seja mais humano e mais educado.
-    Você deve sempre responder em português brasileiro, ser educativo, positivo e oferecer dicas práticas.
-    Mantenha suas respostas concisas (máximo 200 palavras) e focadas na educação financeira.`
-
-    // Se dados financeiros estão disponíveis, adiciona contexto específico
-    if (financialData) {
-      systemPrompt += `\n\nDados financeiros atuais do usuário:
-      - Receitas: R$ ${financialData.receitas.toLocaleString('pt-BR')}
-      - Despesas: R$ ${financialData.despesas.toLocaleString('pt-BR')}
-      - Saldo: R$ ${financialData.saldo.toLocaleString('pt-BR')}
-      - Principais categorias: ${financialData.categorias}
+    // Para dicas de orçamento, gerar resposta baseada nos dados financeiros
+    if (isForBudgetTip && financialData) {
+      const { receitas, despesas, saldo } = financialData
       
-      Use esses dados para dar conselhos mais específicos e personalizados.`
+      // Lógica para gerar dicas baseadas no perfil financeiro
+      let titulo = ''
+      let descricao = ''
+      
+      const percentualGasto = receitas > 0 ? (despesas / receitas) * 100 : 0
+      
+      if (saldo < 0) {
+        titulo = '🚨 Controle de Gastos Urgente'
+        descricao = `Com gastos de ${percentualGasto.toFixed(1)}% da renda, é crucial reduzir despesas imediatamente. Foque em categorias não essenciais e considere fontes extras de renda.`
+      } else if (percentualGasto > 80) {
+        titulo = '⚠️ Atenção ao Orçamento'
+        descricao = `Você está gastando ${percentualGasto.toFixed(1)}% da sua renda. Tente reduzir para 70% para ter mais folga financeira e criar uma reserva de emergência.`
+      } else if (percentualGasto > 60) {
+        titulo = '💰 Oportunidade de Poupança'
+        descricao = `Com ${percentualGasto.toFixed(1)}% de gastos, você pode direcionar mais recursos para poupança. Tente economizar pelo menos 20% da renda mensalmente.`
+      } else if (saldo > receitas * 0.5) {
+        titulo = '📈 Considere Investimentos'
+        descricao = `Excelente controle financeiro! Com esse saldo positivo, considere diversificar em investimentos para fazer seu dinheiro trabalhar para você.`
+      } else {
+        titulo = '✅ Situação Equilibrada'
+        descricao = `Seu orçamento está bem balanceado. Continue monitorando e considere definir metas específicas para diferentes categorias de gastos.`
+      }
+      
+      return NextResponse.json({
+        response: `Título: ${titulo} | Descrição: ${descricao}`
+      })
+    }
+
+    // Para mensagens gerais do chat, gerar resposta baseada no contexto
+    let response = ''
+    
+    if (message.toLowerCase().includes('orçamento')) {
+      response = 'Para um orçamento eficaz, recomendo a regra 50-30-20: 50% para necessidades, 30% para desejos e 20% para poupança. Revise mensalmente e ajuste conforme necessário.'
+    } else if (message.toLowerCase().includes('investir') || message.toLowerCase().includes('investimento')) {
+      response = 'Antes de investir, certifique-se de ter uma reserva de emergência de 3-6 meses de gastos. Comece com investimentos conservadores como CDB ou Tesouro Direto.'
+    } else if (message.toLowerCase().includes('dívida') || message.toLowerCase().includes('divida')) {
+      response = 'Para quitar dívidas, liste todas por ordem de juros (da maior para menor), quite primeiro as de juros mais altos e negocie quando possível.'
+    } else if (message.toLowerCase().includes('cartão') || message.toLowerCase().includes('cartao')) {
+      response = 'Use o cartão de crédito com consciência: pague sempre o valor total da fatura, monitore os gastos semanalmente e tenha um limite interno menor que o oferecido pelo banco.'
+    } else if (message.toLowerCase().includes('poupança') || message.toLowerCase().includes('poupanca')) {
+      response = 'Automatize sua poupança! Configure uma transferência automática logo após receber o salário. Mesmo valores pequenos, quando consistentes, geram grandes resultados.'
+    } else if (message.toLowerCase().includes('emergência') || message.toLowerCase().includes('emergencia')) {
+      response = 'A reserva de emergência deve cobrir 3-6 meses de gastos essenciais. Mantenha em aplicações líquidas como poupança ou CDB com liquidez diária.'
     } else {
-      systemPrompt += `\n\nO usuário ainda não tem dados financeiros cadastrados no sistema. 
-      Incentive-o a começar a registrar suas transações para ter uma visão melhor de sua situação financeira.`
+      response = 'Olá! Sou seu assistente financeiro. Posso ajudar com dicas sobre orçamento, investimentos, controle de gastos, pagamento de dívidas e planejamento financeiro. Em que posso te ajudar especificamente?'
     }
 
-    console.log('🤖 Enviando requisição para OpenAI...')
-    
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: systemPrompt
-        },
-        {
-          role: "user", 
-          content: message
-        }
-      ],
-      max_tokens: 300,
-      temperature: 0.7,
-    })
-
-    const response = completion.choices[0]?.message?.content || 'Desculpe, não consegui gerar uma resposta. Tente novamente.'
-
-    console.log('✅ Resposta gerada com sucesso')
     return NextResponse.json({ response })
-    
+
   } catch (error) {
-    console.error('❌ Erro na API do assistente:', error)
-    
-    // Tratamento específico para erro de API
-    if (error instanceof Error && (error.message.includes('apiKey') || error.message.includes('API'))) {
-      return NextResponse.json(
-        { 
-          error: 'Erro na comunicação com o assistente IA. Tente novamente em alguns instantes.' 
-        },
-        { status: 503 }
-      )
-    }
-    
+    console.error('Erro na API do assistente IA:', error)
     return NextResponse.json(
-      { error: 'Erro interno do servidor. Verifique os logs para mais detalhes.' },
+      { error: 'Erro interno do servidor' },
       { status: 500 }
     )
   }

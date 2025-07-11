@@ -19,7 +19,8 @@ export function NewTransactionModal({ isOpen, onClose }: NewTransactionModalProp
     type: 'expense' as 'income' | 'expense',
     category: '',
     card: '',
-    date: new Date().toISOString().split('T')[0]
+    date: new Date().toISOString().split('T')[0],
+    dueDate: ''
   })
 
   const activeCards = cards.filter(card => card.is_active)
@@ -61,6 +62,7 @@ export function NewTransactionModal({ isOpen, onClose }: NewTransactionModalProp
       category_id: formData.category,
       card_id: formData.card,
       transaction_date: formData.date,
+      due_date: formData.dueDate || undefined,
       is_recurring: false
     }
 
@@ -73,7 +75,8 @@ export function NewTransactionModal({ isOpen, onClose }: NewTransactionModalProp
       type: 'expense',
       category: '',
       card: '',
-      date: new Date().toISOString().split('T')[0]
+      date: new Date().toISOString().split('T')[0],
+      dueDate: ''
     })
 
     onClose()
@@ -247,7 +250,7 @@ export function NewTransactionModal({ isOpen, onClose }: NewTransactionModalProp
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Data *
+                Data da Transação *
               </label>
               <input
                 type="date"
@@ -256,6 +259,23 @@ export function NewTransactionModal({ isOpen, onClose }: NewTransactionModalProp
                 onChange={(e) => setFormData({...formData, date: e.target.value})}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base touch-manipulation"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                📅 Data de Vencimento
+                <span className="text-xs text-gray-500 ml-1">(opcional)</span>
+              </label>
+              <input
+                type="date"
+                value={formData.dueDate}
+                onChange={(e) => setFormData({...formData, dueDate: e.target.value})}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base touch-manipulation"
+                min={formData.date}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                {formData.type === 'expense' ? 'Quando esta conta deve ser paga' : 'Quando esta receita deve ser recebida'}
+              </p>
             </div>
 
             {/* Espaçamento extra para melhor scroll no mobile */}

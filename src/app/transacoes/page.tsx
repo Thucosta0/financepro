@@ -1,20 +1,26 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Search, Filter, Download, Calendar, X, AlertTriangle, Trash2 } from 'lucide-react'
+import { Plus, Search, Filter, Download, Calendar, X, AlertTriangle, Trash2, Edit2, Check, CheckSquare, Square, MoreHorizontal } from 'lucide-react'
 import { useFinancial } from '@/context/financial-context'
 import { useSubscription } from '@/hooks/use-subscription'
 import { NewTransactionModal } from '@/components/new-transaction-modal'
+import { EditTransactionModal } from '@/components/edit-transaction-modal'
 import { TransactionPrerequisitesGuide } from '@/components/transaction-prerequisites-guide'
 import { useTransactionPrerequisites } from '@/hooks/use-transaction-prerequisites'
 import { ProtectedRoute } from '@/components/protected-route'
+import type { Transaction } from '@/lib/supabase-client'
 
 export default function TransacoesPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('todas')
   const [showNewTransactionModal, setShowNewTransactionModal] = useState(false)
+  const [showEditTransactionModal, setShowEditTransactionModal] = useState(false)
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
   const [showPrerequisitesGuide, setShowPrerequisitesGuide] = useState(false)
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
+  const [selectedTransactions, setSelectedTransactions] = useState<Set<string>>(new Set())
+  const [isSelectMode, setIsSelectMode] = useState(false)
   const [dateFilter, setDateFilter] = useState({
     startDate: '',
     endDate: ''
@@ -26,11 +32,21 @@ export default function TransacoesPage() {
     max: ''
   })
   
-  const { transactions, cards, categories, getFinancialSummary, deleteTransaction } = useFinancial()
+  const { 
+    transactions, 
+    cards, 
+    categories, 
+    getCompleteSummary, 
+    deleteTransaction, 
+    updateTransaction,
+    loadMoreTransactions,
+    hasMoreTransactions,
+    transactionsLoading
+  } = useFinancial()
   const { canCreateTransaction } = useTransactionPrerequisites()
   const { canPerformAction, isTrialExpired } = useSubscription()
 
-  const { receitas, despesas, saldo } = getFinancialSummary()
+  const { receitas, despesas, saldo } = getCompleteSummary()
 
   // Verificar se pode criar transações considerando tanto pré-requisitos quanto trial
   const canCreateTransactionFull = canCreateTransaction && canPerformAction('transactions')
@@ -57,6 +73,204 @@ export default function TransacoesPage() {
       return
     }
     setShowNewTransactionModal(true)
+  }
+
+  // Função para editar transação
+  const handleEditTransaction = (transaction: Transaction) => {
+    if (isTrialExpired()) {
+      window.location.href = '/planos'
+      return
+    }
+    
+    if (!canPerformAction('transactions')) {
+      alert('Você não tem permissão para editar transações.')
+      return
+    }
+    
+    setEditingTransaction(transaction)
+    setShowEditTransactionModal(true)
+  }
+
+  // Função para finalizar/desfinalizar transação
+  const handleToggleTransactionStatus = async (transaction: Transaction) => {
+    if (isTrialExpired()) {
+      window.location.href = '/planos'
+      return
+    }
+    
+    if (!canPerformAction('transactions')) {
+      alert('Você não tem permissão para modificar transações.')
+      return
+    }
+    
+    try {
+      const isCompleting = !transaction.is_completed
+      const hoje = new Date().toLocaleDateString('pt-BR')
+      
+      let updatedTransaction
+      let mensagem = ''
+      
+      if (isCompleting) {
+        // Finalizando a transação
+        if (transaction.type === 'income') {
+          mensagem = `💰 Receita confirmada!\n\nA receita "${transaction.description}" foi marcada como recebida em ${hoje}.`
+          updatedTransaction = {
+            ...transaction,
+            is_completed: true,
+            notes: `${transaction.notes || ''}\n✅ Recebida em ${hoje}`.trim()
+          }
+        } else {
+          mensagem = `💳 Despesa paga!\n\nA conta "${transaction.description}" foi marcada como paga em ${hoje}.`
+          updatedTransaction = {
+            ...transaction,
+            is_completed: true,
+            notes: `${transaction.notes || ''}\n✅ Paga em ${hoje}`.trim()
+          }
+        }
+      } else {
+        // Desfazendo a finalização
+        mensagem = `🔄 Status revertido!\n\nA transação "${transaction.description}" foi marcada como pendente novamente.`
+        
+        // Remover a nota de finalização anterior
+        const notesWithoutCompletion = (transaction.notes || '').replace(/\n?✅\s*(Paga|Recebida|Finalizada)\s*em\s*\d{2}\/\d{2}\/\d{4}/g, '').trim()
+        
+        updatedTransaction = {
+          ...transaction,
+          is_completed: false,
+          notes: notesWithoutCompletion || undefined
+        }
+      }
+      
+      await updateTransaction(transaction.id, updatedTransaction)
+      
+      // Mostrar feedback personalizado
+      alert(mensagem)
+    } catch (error) {
+      console.error('Erro ao atualizar status da transação:', error)
+      alert('Erro ao atualizar transação. Tente novamente.')
+    }
+  }
+
+  // Funções de seleção em massa
+  const handleSelectTransaction = (transactionId: string) => {
+    const newSelected = new Set(selectedTransactions)
+    if (newSelected.has(transactionId)) {
+      newSelected.delete(transactionId)
+    } else {
+      newSelected.add(transactionId)
+    }
+    setSelectedTransactions(newSelected)
+  }
+
+  const handleSelectAll = () => {
+    if (selectedTransactions.size === transacoesFiltradas.length) {
+      setSelectedTransactions(new Set())
+    } else {
+      setSelectedTransactions(new Set(transacoesFiltradas.map(t => t.id)))
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    if (isTrialExpired()) {
+      window.location.href = '/planos'
+      return
+    }
+    
+    if (!canPerformAction('transactions')) {
+      alert('Você não tem permissão para excluir transações.')
+      return
+    }
+
+    if (selectedTransactions.size === 0) {
+      alert('Selecione pelo menos uma transação para excluir.')
+      return
+    }
+
+    const confirmMessage = selectedTransactions.size === 1 
+      ? 'Tem certeza que deseja excluir a transação selecionada?'
+      : `Tem certeza que deseja excluir ${selectedTransactions.size} transações selecionadas?`
+
+    if (confirm(confirmMessage)) {
+      try {
+        const deletePromises = Array.from(selectedTransactions).map(id => deleteTransaction(id))
+        await Promise.all(deletePromises)
+        setSelectedTransactions(new Set())
+        setIsSelectMode(false)
+        alert(`${selectedTransactions.size} transação(ões) excluída(s) com sucesso!`)
+      } catch (error) {
+        console.error('Erro ao excluir transações:', error)
+        alert('Erro ao excluir algumas transações. Tente novamente.')
+      }
+    }
+  }
+
+  const handleBulkMarkComplete = async () => {
+    if (isTrialExpired()) {
+      window.location.href = '/planos'
+      return
+    }
+    
+    if (!canPerformAction('transactions')) {
+      alert('Você não tem permissão para modificar transações.')
+      return
+    }
+
+    if (selectedTransactions.size === 0) {
+      alert('Selecione pelo menos uma transação para finalizar.')
+      return
+    }
+
+    // Obter informações das transações selecionadas
+    const selectedTransactionsList = Array.from(selectedTransactions).map(id => 
+      transactions.find(t => t.id === id)
+    ).filter((t): t is Transaction => t !== undefined)
+
+    const receitas = selectedTransactionsList.filter(t => t.type === 'income').length
+    const despesas = selectedTransactionsList.filter(t => t.type === 'expense').length
+    const hoje = new Date().toLocaleDateString('pt-BR')
+
+    // Criar mensagem personalizada
+    let mensagem = `✅ Finalizado em ${hoje}!\n\n`
+    
+    if (receitas > 0 && despesas > 0) {
+      mensagem += `📈 ${receitas} receita(s) confirmada(s) como recebida(s)\n`
+      mensagem += `💸 ${despesas} despesa(s) marcada(s) como paga(s)\n\n`
+      mensagem += `Todas as transações foram processadas com sucesso!`
+    } else if (receitas > 0) {
+      mensagem += `💰 ${receitas} receita(s) confirmada(s) como recebida(s)!\n\n`
+      mensagem += `O dinheiro foi creditado em sua conta no dia de hoje.`
+    } else if (despesas > 0) {
+      mensagem += `💳 ${despesas} despesa(s) marcada(s) como paga(s)!\n\n`
+      mensagem += `As contas foram quitadas no dia de hoje.`
+    }
+
+    try {
+      const updatePromises = Array.from(selectedTransactions).map(id => {
+        const transaction = transactions.find(t => t.id === id)
+        if (transaction) {
+          return updateTransaction(id, { 
+            ...transaction, 
+            is_completed: true,
+            notes: `${transaction.notes || ''}\n✅ Finalizada em ${new Date().toLocaleDateString('pt-BR')}`.trim()
+          })
+        }
+        return Promise.resolve()
+      })
+      await Promise.all(updatePromises)
+      setSelectedTransactions(new Set())
+      setIsSelectMode(false)
+      
+      // Mostrar mensagem personalizada
+      alert(mensagem)
+    } catch (error) {
+      console.error('Erro ao finalizar transações:', error)
+      alert('Erro ao finalizar algumas transações. Tente novamente.')
+    }
+  }
+
+  const exitSelectMode = () => {
+    setIsSelectMode(false)
+    setSelectedTransactions(new Set())
   }
 
   // Função para obter texto e estilo do botão baseado no status
@@ -136,7 +350,7 @@ export default function TransacoesPage() {
       return
     }
 
-    const headers = ['Data', 'Descrição', 'Categoria', 'Cartão', 'Tipo', 'Valor', 'Recorrente']
+    const headers = ['Data', 'Descrição', 'Categoria', 'Cartão', 'Tipo', 'Valor', 'Data Vencimento', 'Recorrente']
     const csvData = [
       headers.join(','),
       ...transacoesFiltradas.map(t => [
@@ -146,6 +360,7 @@ export default function TransacoesPage() {
         `"${getCardName(t.card_id)}"`,
         t.type === 'income' ? 'Receita' : 'Despesa',
         t.amount.toString().replace('.', ','),
+        t.due_date ? formatarData(t.due_date) : 'Sem vencimento',
         t.is_recurring ? 'Sim' : 'Não'
       ].join(','))
     ].join('\n')
@@ -200,6 +415,7 @@ export default function TransacoesPage() {
                 <th>Cartão</th>
                 <th>Tipo</th>
                 <th>Valor</th>
+                <th>Vencimento</th>
               </tr>
             </thead>
             <tbody>
@@ -216,6 +432,7 @@ export default function TransacoesPage() {
           <td class="${t.type === 'income' ? 'income' : 'expense'}">
             ${t.type === 'income' ? '+' : '-'}${formatarValor(t.amount)}
           </td>
+          <td>${t.due_date ? formatarData(t.due_date) : '-'}</td>
         </tr>
       `
     })
@@ -268,12 +485,26 @@ export default function TransacoesPage() {
 
   return (
     <ProtectedRoute>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-gray-900">Transações</h1>
+      <div className="space-y-4 lg:space-y-6">
+        {/* Header Mobile-First */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+          <div className="flex items-center justify-between sm:justify-start space-x-4">
+            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">💳 Transações</h1>
+            {transacoesFiltradas.length > 0 && !isSelectMode && (
+              <button
+                onClick={() => setIsSelectMode(true)}
+                className="flex items-center space-x-2 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm lg:text-base bg-white"
+                title="Selecionar múltiplas transações"
+              >
+                <CheckSquare className="h-4 w-4" />
+                <span className="hidden sm:inline">Selecionar</span>
+              </button>
+            )}
+          </div>
+          
           <button 
             onClick={handleNewTransactionClick}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all font-medium ${buttonProps.className}`}
+            className={`w-full sm:w-auto flex items-center justify-center space-x-2 px-4 py-3 sm:py-2 rounded-lg transition-all font-medium ${buttonProps.className}`}
             title={buttonProps.title}
           >
             <ButtonIcon className="h-4 w-4" />
@@ -281,34 +512,100 @@ export default function TransacoesPage() {
           </button>
         </div>
 
-        {/* Estatísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-lg shadow-sm border p-6">
+        {/* Barra de ações em massa - Mobile Otimizada */}
+        {isSelectMode && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+              <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                <button
+                  onClick={handleSelectAll}
+                  className="flex items-center justify-center sm:justify-start space-x-2 text-blue-700 hover:text-blue-800 p-2 sm:p-0"
+                >
+                  {selectedTransactions.size === transacoesFiltradas.length ? (
+                    <CheckSquare className="h-5 w-5" />
+                  ) : (
+                    <Square className="h-5 w-5" />
+                  )}
+                  <span className="font-medium">
+                    {selectedTransactions.size === transacoesFiltradas.length ? 'Desmarcar todas' : 'Selecionar todas'}
+                  </span>
+                </button>
+                {selectedTransactions.size > 0 && (
+                  <span className="text-blue-700 font-medium text-center sm:text-left">
+                    {selectedTransactions.size} selecionada(s)
+                  </span>
+                )}
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                {selectedTransactions.size > 0 && (
+                  <>
+                    <button
+                      onClick={handleBulkMarkComplete}
+                      className="flex-1 sm:flex-none flex items-center justify-center space-x-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+                      title="Marcar como finalizadas"
+                    >
+                      <Check className="h-4 w-4" />
+                      <span>Finalizar</span>
+                    </button>
+                    <button
+                      onClick={handleBulkDelete}
+                      className="flex-1 sm:flex-none flex items-center justify-center space-x-2 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
+                      title="Excluir selecionadas"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span>Excluir</span>
+                    </button>
+                  </>
+                )}
+                <button
+                  onClick={exitSelectMode}
+                  className="flex items-center justify-center space-x-2 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm bg-white"
+                >
+                  <X className="h-4 w-4" />
+                  <span className="hidden sm:inline">Cancelar</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Cards de Resumo - Mobile-First */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-6">
+          <div className="bg-white rounded-lg shadow-sm border p-4 lg:p-6">
+            <div className="flex items-center justify-between">
             <div className="flex items-center">
               <div className="text-green-600 mr-3">💰</div>
               <div>
-                <p className="text-sm text-gray-600">Receitas</p>
-                <p className="text-2xl font-bold text-green-600">{formatarValor(receitas)}</p>
+                  <p className="text-xs lg:text-sm text-gray-600">Receitas</p>
+                  <p className="text-lg lg:text-xl font-bold text-green-600">{formatarValor(receitas)}</p>
+                </div>
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-lg shadow-sm border p-6">
+          
+          <div className="bg-white rounded-lg shadow-sm border p-4 lg:p-6">
+            <div className="flex items-center justify-between">
             <div className="flex items-center">
               <div className="text-red-600 mr-3">💸</div>
               <div>
-                <p className="text-sm text-gray-600">Despesas</p>
-                <p className="text-2xl font-bold text-red-600">{formatarValor(despesas)}</p>
+                  <p className="text-xs lg:text-sm text-gray-600">Despesas</p>
+                  <p className="text-lg lg:text-xl font-bold text-red-600">{formatarValor(despesas)}</p>
+                </div>
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-lg shadow-sm border p-6">
+          
+          <div className="bg-white rounded-lg shadow-sm border p-4 lg:p-6">
+            <div className="flex items-center justify-between">
             <div className="flex items-center">
               <div className="text-blue-600 mr-3">💳</div>
               <div>
-                <p className="text-sm text-gray-600">Saldo</p>
-                <p className={`text-2xl font-bold ${saldo >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  <p className="text-xs lg:text-sm text-gray-600">Saldo</p>
+                  <p className={`text-lg lg:text-xl font-bold ${saldo >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {formatarValor(saldo)}
                 </p>
+                </div>
               </div>
             </div>
           </div>
@@ -317,8 +614,9 @@ export default function TransacoesPage() {
         {/* Alert de trial expirado */}
         {isTrialExpired() && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <div className="flex items-center">
-              <div className="text-red-600 mr-3">
+            <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0">
+              <div className="flex items-start sm:items-center">
+                <div className="text-red-600 mr-3 mt-0.5 sm:mt-0">
                 <AlertTriangle className="h-5 w-5" />
               </div>
               <div className="flex-1">
@@ -326,10 +624,11 @@ export default function TransacoesPage() {
                 <p className="text-sm text-red-700 mt-1">
                   Seu trial completo acabou. Faça upgrade para continuar criando e gerenciando transações.
                 </p>
+                </div>
               </div>
               <button
                 onClick={() => window.location.href = '/planos'}
-                className="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700 transition-colors font-medium"
+                className="w-full sm:w-auto bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700 transition-colors font-medium"
               >
                 Renovar Agora
               </button>
@@ -340,17 +639,19 @@ export default function TransacoesPage() {
         {/* Alert de pré-requisitos se necessário */}
         {!isTrialExpired() && !canCreateTransaction && (
           <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-            <div className="flex items-center">
-              <div className="text-orange-600 mr-3">⚠️</div>
+            <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0">
+              <div className="flex items-start sm:items-center">
+                <div className="text-orange-600 mr-3 mt-0.5 sm:mt-0">⚠️</div>
               <div className="flex-1">
                 <h3 className="text-sm font-medium text-orange-800">Configuração necessária</h3>
                 <p className="text-sm text-orange-700 mt-1">
                   Para criar transações você precisa ter pelo menos uma categoria e um cartão/conta cadastrados.
                 </p>
+                </div>
               </div>
               <button
                 onClick={() => setShowPrerequisitesGuide(true)}
-                className="bg-orange-600 text-white px-3 py-1 rounded text-sm hover:bg-orange-700 transition-colors"
+                className="w-full sm:w-auto bg-orange-600 text-white px-3 py-2 rounded text-sm hover:bg-orange-700 transition-colors"
               >
                 Ver guia
               </button>
@@ -358,16 +659,16 @@ export default function TransacoesPage() {
           </div>
         )}
 
-        {/* Filtros */}
-        <div className="bg-white rounded-lg shadow-sm border p-6">
+        {/* Filtros - Mobile-First */}
+        <div className="bg-white rounded-lg shadow-sm border p-4 lg:p-6">
           <div className="flex flex-col gap-4">
             {/* Filtros básicos */}
-            <div className="flex flex-col sm:flex-row gap-4 items-center">
+            <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Buscar por descrição ou categoria..."
+                  placeholder="Buscar por descrição..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -378,56 +679,29 @@ export default function TransacoesPage() {
                 <select
                   value={filtroTipo}
                   onChange={(e) => setFiltroTipo(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="flex-1 sm:flex-none px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="todas">Todas</option>
-                  <option value="receita">Receitas</option>
-                  <option value="despesa">Despesas</option>
+                  <option value="income">Receitas</option>
+                  <option value="expense">Despesas</option>
                 </select>
+                
                 <button 
                   onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                  className={`px-4 py-2 border rounded-lg hover:bg-gray-50 flex items-center space-x-2 ${showAdvancedFilters ? 'bg-blue-50 border-blue-300 text-blue-700' : 'border-gray-300'}`}
+                  className="flex items-center space-x-2 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm bg-white"
                 >
                   <Filter className="h-4 w-4" />
-                  <span>Filtros</span>
+                  <span className="hidden sm:inline">Filtros</span>
                 </button>
-                
-                <div className="relative">
-                  <button 
-                    onClick={() => {
-                      const dropdown = document.getElementById('export-dropdown')
-                      dropdown?.classList.toggle('hidden')
-                    }}
-                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center space-x-2"
-                  >
-                    <Download className="h-4 w-4" />
-                    <span>Exportar</span>
-                  </button>
-                  <div id="export-dropdown" className="hidden absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
-                    <button 
-                      onClick={exportToCSV}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm"
-                    >
-                      📊 Exportar CSV
-                    </button>
-                    <button 
-                      onClick={exportToPDF}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm"
-                    >
-                      📄 Imprimir PDF
-                    </button>
-                  </div>
-                </div>
               </div>
             </div>
 
             {/* Filtros avançados */}
             {showAdvancedFilters && (
-              <div className="border-t pt-4 mt-4">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  {/* Filtro de Data */}
+              <div className="border-t pt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Data Início</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Data Inicial</label>
                     <input
                       type="date"
                       value={dateFilter.startDate}
@@ -435,9 +709,8 @@ export default function TransacoesPage() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                     />
                   </div>
-
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Data Fim</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Data Final</label>
                     <input
                       type="date"
                       value={dateFilter.endDate}
@@ -445,8 +718,6 @@ export default function TransacoesPage() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                     />
                   </div>
-
-                  {/* Filtro de Categoria */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
                     <select
@@ -456,14 +727,14 @@ export default function TransacoesPage() {
                     >
                       <option value="">Todas as categorias</option>
                       {categories.map(category => (
-                        <option key={category.id} value={category.id}>{category.name}</option>
+                        <option key={category.id} value={category.id}>
+                          {category.name}
+                        </option>
                       ))}
                     </select>
                   </div>
-
-                  {/* Filtro de Cartão */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Cartão</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Cartão/Conta</label>
                     <select
                       value={cardFilter}
                       onChange={(e) => setCardFilter(e.target.value)}
@@ -471,20 +742,22 @@ export default function TransacoesPage() {
                     >
                       <option value="">Todos os cartões</option>
                       {cards.map(card => (
-                        <option key={card.id} value={card.id}>{card.name}</option>
+                        <option key={card.id} value={card.id}>
+                          {card.name}
+                        </option>
                       ))}
                     </select>
                   </div>
+                  </div>
 
-                  {/* Filtro de Valor */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Valor</label>
-                    <div className="space-y-2">
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Faixa de Valor</label>
+                  <div className="flex gap-2">
                       <input
                         type="number"
                         value={amountFilter.min}
                         onChange={(e) => setAmountFilter({...amountFilter, min: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                         placeholder="Valor mínimo"
                         step="0.01"
                       />
@@ -492,11 +765,10 @@ export default function TransacoesPage() {
                         type="number"
                         value={amountFilter.max}
                         onChange={(e) => setAmountFilter({...amountFilter, max: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                         placeholder="Valor máximo"
                         step="0.01"
                       />
-                    </div>
                   </div>
                 </div>
 
@@ -515,15 +787,159 @@ export default function TransacoesPage() {
           </div>
         </div>
 
-        {/* Lista de Transações */}
+        {/* Lista de Transações - Mobile-First */}
         <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
           {transacoesFiltradas.length > 0 ? (
             <div className="divide-y divide-gray-200">
               {transacoesFiltradas.map((transacao) => (
-                <div key={transacao.id} className="p-6 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center justify-between">
+                <div key={transacao.id} className={`p-4 lg:p-6 transition-colors ${
+                  transacao.is_completed ? 'bg-green-50 hover:bg-green-100' : 'hover:bg-gray-50'
+                }`}>
+                  {/* Layout Mobile */}
+                  <div className="block lg:hidden">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-start space-x-3">
+                        {/* Checkbox */}
+                        {isSelectMode ? (
+                          <button
+                            onClick={() => handleSelectTransaction(transacao.id)}
+                            className={`flex items-center justify-center w-6 h-6 rounded border-2 transition-all mt-1 ${
+                              selectedTransactions.has(transacao.id)
+                                ? 'bg-blue-500 border-blue-500 text-white'
+                                : 'border-gray-300 hover:border-blue-400'
+                            }`}
+                          >
+                            {selectedTransactions.has(transacao.id) && <Check className="h-4 w-4" />}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleToggleTransactionStatus(transacao)}
+                            className={`flex items-center justify-center w-6 h-6 rounded-lg border-2 transition-all mt-1 transform hover:scale-110 ${
+                              transacao.is_completed 
+                                ? 'bg-green-500 border-green-500 text-white shadow-lg' 
+                                : 'border-gray-300 hover:border-green-400 hover:bg-green-50'
+                            } ${isTrialExpired() ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            disabled={isTrialExpired()}
+                          >
+                            {transacao.is_completed && <Check className="h-4 w-4" />}
+                          </button>
+                        )}
+                        
+                        {/* Informações principais */}
+                        <div className="flex-1 min-w-0">
+                          <h3 className={`text-base font-medium ${
+                            transacao.is_completed ? 'text-gray-600 line-through' : 'text-gray-900'
+                          }`}>
+                            {transacao.description}
+                          </h3>
+                          <div className="mt-1 flex items-center space-x-2">
+                            <span className="inline-block w-2 h-2 rounded-full" 
+                                  style={{ backgroundColor: transacao.category?.color || '#gray' }}></span>
+                            <span className="text-sm text-gray-600">{transacao.category?.name || 'Sem categoria'}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Valor */}
+                      <div className={`text-right font-semibold text-lg ${
+                        transacao.type === 'income' ? 'text-green-600' : 'text-red-600'
+                      } ${transacao.is_completed ? 'opacity-60' : ''}`}>
+                        {transacao.type === 'income' ? '+' : '-'}{formatarValor(transacao.amount)}
+                      </div>
+                    </div>
+                    
+                    {/* Informações secundárias */}
+                    <div className="flex items-center justify-between text-sm text-gray-500">
+                      <div className="flex items-center space-x-3">
+                        <span>{getCardName(transacao.card_id)}</span>
+                        <span>•</span>
+                        <span>{formatarData(transacao.transaction_date)}</span>
+                        {transacao.due_date && (
+                          <>
+                            <span>•</span>
+                            <span className="text-orange-600">📅 {formatarData(transacao.due_date)}</span>
+                          </>
+                        )}
+                        {transacao.is_recurring && (
+                          <>
+                            <span>•</span>
+                            <span className="text-purple-600">🔄</span>
+                          </>
+                        )}
+                        {transacao.is_completed && (
+                          <>
+                            <span>•</span>
+                            <span className="text-green-600">✅</span>
+                          </>
+                        )}
+                      </div>
+                      
+                      {/* Botões de ação - só no modo normal */}
+                      {!isSelectMode && (
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => handleEditTransaction(transacao)}
+                            className={`p-2 rounded-lg transition-colors ${
+                              isTrialExpired() 
+                                ? 'text-gray-400 cursor-not-allowed' 
+                                : 'text-blue-600 hover:bg-blue-50'
+                            }`}
+                            disabled={isTrialExpired()}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteTransaction(transacao.id, transacao.description)}
+                            className={`p-2 rounded-lg transition-colors ${
+                              isTrialExpired() 
+                                ? 'text-gray-400 cursor-not-allowed' 
+                                : 'text-red-600 hover:bg-red-50'
+                            }`}
+                            disabled={isTrialExpired()}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Layout Desktop */}
+                  <div className="hidden lg:flex items-center justify-between">
+                    <div className="flex items-center space-x-4 flex-1">
+                      {/* Checkbox */}
+                      {isSelectMode ? (
+                        <button
+                          onClick={() => handleSelectTransaction(transacao.id)}
+                          className={`flex items-center justify-center w-6 h-6 rounded border-2 transition-all ${
+                            selectedTransactions.has(transacao.id)
+                              ? 'bg-blue-500 border-blue-500 text-white'
+                              : 'border-gray-300 hover:border-blue-400'
+                          }`}
+                        >
+                          {selectedTransactions.has(transacao.id) && <Check className="h-4 w-4" />}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleToggleTransactionStatus(transacao)}
+                          className={`flex items-center justify-center w-6 h-6 rounded-lg border-2 transition-all transform ${
+                            transacao.is_completed 
+                              ? 'bg-green-500 border-green-500 text-white shadow-lg' 
+                              : 'border-gray-300 hover:border-green-400 hover:bg-green-50'
+                          } ${isTrialExpired() ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110'}`}
+                          disabled={isTrialExpired()}
+                        >
+                          {transacao.is_completed && <Check className="h-4 w-4" />}
+                        </button>
+                      )}
+
+                      {/* Informações da transação */}
                     <div className="flex-1">
-                      <h3 className="text-lg font-medium text-gray-900">{transacao.description}</h3>
+                        <h3 className={`text-lg font-medium ${
+                          transacao.is_completed ? 'text-gray-600 line-through' : 'text-gray-900'
+                        }`}>
+                          {transacao.description}
+                        </h3>
                       <div className="mt-1 flex items-center space-x-4 text-sm text-gray-500">
                         <span className="flex items-center">
                           <span className="inline-block w-2 h-2 rounded-full mr-2" 
@@ -534,20 +950,50 @@ export default function TransacoesPage() {
                         <span>{getCardName(transacao.card_id)}</span>
                         <span>•</span>
                         <span>{formatarData(transacao.transaction_date)}</span>
+                        {transacao.due_date && (
+                          <>
+                            <span>•</span>
+                            <span className="text-orange-600 font-medium">📅 Vence {formatarData(transacao.due_date)}</span>
+                          </>
+                        )}
                         {transacao.is_recurring && (
                           <>
                             <span>•</span>
                             <span className="text-purple-600">🔄 Recorrente</span>
                           </>
                         )}
+                          {transacao.is_completed && (
+                            <>
+                              <span>•</span>
+                              <span className="text-green-600 font-medium">✅ Finalizada</span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
+
+                    {/* Valor e botões de ação */}
                     <div className="flex items-center space-x-4">
-                      <div className={`text-right font-semibold text-lg ${
-                        transacao.type === 'income' ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {transacao.type === 'income' ? '+' : '-'}{formatarValor(transacao.amount)}
+                    <div className={`text-right font-semibold text-lg ${
+                      transacao.type === 'income' ? 'text-green-600' : 'text-red-600'
+                      } ${transacao.is_completed ? 'opacity-60' : ''}`}>
+                      {transacao.type === 'income' ? '+' : '-'}{formatarValor(transacao.amount)}
                       </div>
+
+                      {/* Botões de ação individual */}
+                      {!isSelectMode && (
+                        <>
+                          <button
+                            onClick={() => handleEditTransaction(transacao)}
+                            className={`p-2 rounded-lg transition-colors ${
+                              isTrialExpired() 
+                                ? 'text-gray-400 cursor-not-allowed' 
+                                : 'text-blue-600 hover:bg-blue-50'
+                            }`}
+                            disabled={isTrialExpired()}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
                       <button
                         onClick={() => handleDeleteTransaction(transacao.id, transacao.description)}
                         className={`p-2 rounded-lg transition-colors ${
@@ -555,19 +1001,20 @@ export default function TransacoesPage() {
                             ? 'text-gray-400 cursor-not-allowed' 
                             : 'text-red-600 hover:bg-red-50'
                         }`}
-                        title={isTrialExpired() ? 'Trial expirado' : 'Excluir transação'}
                         disabled={isTrialExpired()}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="p-12 text-center">
-              <div className="text-gray-400 text-6xl mb-4">💳</div>
+            <div className="p-8 lg:p-12 text-center">
+              <div className="text-gray-400 text-4xl lg:text-6xl mb-4">💳</div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma transação encontrada</h3>
               <p className="text-gray-600 mb-4">
                 {searchTerm || filtroTipo !== 'todas' 
@@ -577,7 +1024,7 @@ export default function TransacoesPage() {
               </p>
               <button 
                 onClick={handleNewTransactionClick}
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                className="w-full sm:w-auto bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
               >
                 {isTrialExpired() ? 'Renovar para Adicionar' : canCreateTransaction ? 'Adicionar Primeira Transação' : 'Configurar Pré-requisitos'}
               </button>
@@ -585,10 +1032,42 @@ export default function TransacoesPage() {
           )}
         </div>
 
+        {/* Botão Carregar Mais */}
+        {hasMoreTransactions && transacoesFiltradas.length > 0 && (
+          <div className="mt-6 text-center">
+            <button
+              onClick={loadMoreTransactions}
+              disabled={transactionsLoading}
+              className="w-full sm:w-auto bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+            >
+              {transactionsLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Carregando...</span>
+                </>
+              ) : (
+                <>
+                  <span>Carregar Mais</span>
+                  <MoreHorizontal className="h-4 w-4" />
+                </>
+              )}
+            </button>
+          </div>
+        )}
+
         {/* Modais */}
         <NewTransactionModal
           isOpen={showNewTransactionModal}
           onClose={() => setShowNewTransactionModal(false)}
+        />
+
+        <EditTransactionModal
+          isOpen={showEditTransactionModal}
+          onClose={() => {
+            setShowEditTransactionModal(false)
+            setEditingTransaction(null)
+          }}
+          transaction={editingTransaction}
         />
 
         <TransactionPrerequisitesGuide

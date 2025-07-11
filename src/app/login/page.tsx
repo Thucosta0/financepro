@@ -51,12 +51,10 @@ export default function LoginPage() {
             
             // Se não tem nenhum dado, é provável que seja um usuário novo
             if (!hasTransactions && !hasCategories && !hasCards) {
-              console.log('🆕 Usuário novo detectado - redirecionando para /planos')
               // Marcar que é um novo usuário para mostrar boas-vindas especiais
               sessionStorage.setItem('fromLogin', 'newUser')
               router.push('/planos')
             } else {
-              console.log('👤 Usuário existente detectado - redirecionando para /dashboard')
               router.push('/dashboard')
             }
           } else {
@@ -146,7 +144,6 @@ export default function LoginPage() {
     try {
       // URL completa para redirect
       const redirectUrl = `${window.location.origin}/reset-password`
-      console.log('Enviando reset para:', resetEmail, 'com redirect:', redirectUrl)
       
       const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
         redirectTo: redirectUrl

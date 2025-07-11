@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { supabase, getCurrentUser, signIn, signUp, signOut } from '@/lib/supabase-client'
 import type { User } from '@supabase/supabase-js'
 
@@ -17,53 +17,72 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    // Verifica o usuário inicial
-    checkAuthState()
-
-    // Escuta mudanças na autenticação
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email)
-        setUser(session?.user ?? null)
-        setIsLoading(false)
-      }
-    )
-
-    return () => {
-      subscription.unsubscribe()
-    }
-  }, [])
+  const lastAuthCheckRef = useRef(0)
 
   const checkAuthState = async () => {
     try {
-      const user = await getCurrentUser()
-      setUser(user)
+      const currentUser = await getCurrentUser()
+      setUser(currentUser)
     } catch (error) {
-      console.error('Error checking auth state:', error)
+      // Não logar erro se for apenas sessão ausente (situação normal)
+      if (error && typeof error === 'object' && 'message' in error && error.message !== 'Auth session missing!') {
+        console.error('Error checking auth state:', error)
+      }
       setUser(null)
     } finally {
       setIsLoading(false)
     }
   }
 
+  useEffect(() => {
+    // Verifica o usuário inicial apenas uma vez
+    checkAuthState()
+
+    // Escuta mudanças na autenticação
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        // Prevenir updates desnecessários de token refresh
+        if (event === 'TOKEN_REFRESHED') {
+          return
+        }
+
+        // Throttling: só processar se passou mais de 2 segundos desde a última vez
+        const now = Date.now()
+        if (now - lastAuthCheckRef.current < 2000) {
+          return
+        }
+        lastAuthCheckRef.current = now
+
+        // Verificar se a página está visível
+        if (typeof document !== 'undefined' && document.hidden) {
+          return
+        }
+
+        // Processar mudanças significativas
+        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
+          setUser(session?.user ?? null)
+          setIsLoading(false)
+        }
+      }
+    )
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, []) // Dependências vazias para evitar loop
+
   const login = async (emailOrUsername: string, password: string): Promise<{ success: boolean; message?: string }> => {
     try {
       setIsLoading(true)
-      
-      console.log('🔐 [AUTH] Iniciando login com:', emailOrUsername)
       
       // Detectar se é email ou username
       const isEmail = emailOrUsername.includes('@')
       
       if (isEmail) {
         // Se for email, tentar login direto
-        console.log('📧 [AUTH] Detectado como email')
         const result = await signIn(emailOrUsername, password)
         
         if (result.error) {
-          console.log('❌ [AUTH] Erro no login com email:', result.error.message)
           let message = 'Erro ao fazer login'
           
           if (result.error.message.includes('Invalid login credentials')) {
@@ -78,13 +97,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         
         if (result.user) {
-          console.log('✅ [AUTH] Login com email realizado com sucesso')
           setUser(result.user)
           return { success: true }
         }
       } else {
         // Se for username, buscar email primeiro
-        console.log('👤 [AUTH] Detectado como username, buscando email...')
         
         try {
           // Buscar username
@@ -95,27 +112,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             .maybeSingle()
           
           if (error) {
-            console.log('❌ [AUTH] Erro na busca por username:', error.message)
             return { success: false, message: 'Erro ao buscar nome de usuário' }
           }
           
           if (!data?.email) {
-            console.log('❌ [AUTH] Username não encontrado')
             return { success: false, message: 'Nome de usuário não encontrado' }
           }
-          
-          console.log('✅ [AUTH] Username encontrado, fazendo login...')
           
           // Tentar login com o email encontrado
           const result = await signIn(data.email, password)
           
           if (result.error) {
-            console.log('❌ [AUTH] Erro no login com email do username:', result.error.message)
             return { success: false, message: 'Senha incorreta' }
           }
           
           if (result.user) {
-            console.log('✅ [AUTH] Login com username realizado com sucesso')
             setUser(result.user)
             return { success: true }
           }

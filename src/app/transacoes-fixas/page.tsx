@@ -1,13 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Play, Pause, Trash2, AlertTriangle } from 'lucide-react'
+import { Plus, Play, Pause, Trash2, AlertTriangle, Edit2 } from 'lucide-react'
 import { useFinancial } from '@/context/financial-context'
 import { useSubscription } from '@/hooks/use-subscription'
 import { RecurringTransactionModal } from '@/components/recurring-transaction-modal'
+import type { RecurringTransaction } from '@/lib/supabase-client'
 
 export default function TransacoesFixasPage() {
   const [showRecurringModal, setShowRecurringModal] = useState(false)
+  const [editingRecurring, setEditingRecurring] = useState<RecurringTransaction | null>(null)
   const { 
     recurringTransactions, 
     cards, 
@@ -99,6 +101,16 @@ export default function TransacoesFixasPage() {
       window.location.href = '/planos'
       return
     }
+    setEditingRecurring(null)
+    setShowRecurringModal(true)
+  }
+
+  const handleEditRecurring = (recurring: RecurringTransaction) => {
+    if (isTrialExpired()) {
+      window.location.href = '/planos'
+      return
+    }
+    setEditingRecurring(recurring)
     setShowRecurringModal(true)
   }
 
@@ -129,39 +141,40 @@ export default function TransacoesFixasPage() {
 
   return (
     <div className="space-y-4 lg:space-y-6">
+      {/* Header Mobile-First */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Transações Fixas</h1>
+          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">🔄 Transações Fixas</h1>
           <p className="text-gray-600 text-sm lg:text-base">Gerencie suas receitas e despesas recorrentes</p>
         </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 w-full sm:w-auto">
-          <button 
-            onClick={handleNewRecurring}
-            className={`px-4 py-3 rounded-lg flex items-center justify-center space-x-2 touch-manipulation font-medium ${buttonProps.className}`}
-            title={buttonProps.title}
-          >
-            <ButtonIcon className="h-4 w-4" />
-            <span>{buttonProps.text}</span>
-          </button>
-        </div>
+        <button 
+          onClick={handleNewRecurring}
+          className={`w-full sm:w-auto px-4 py-3 rounded-lg flex items-center justify-center space-x-2 touch-manipulation font-medium ${buttonProps.className}`}
+          title={buttonProps.title}
+        >
+          <ButtonIcon className="h-4 w-4" />
+          <span>{buttonProps.text}</span>
+        </button>
       </div>
 
       {/* Alert de trial expirado */}
       {isTrialExpired() && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <div className="flex items-center">
-            <div className="text-red-600 mr-3">
-              <AlertTriangle className="h-5 w-5" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-sm font-medium text-red-800">Trial de 30 dias expirado</h3>
-              <p className="text-sm text-red-700 mt-1">
-                Seu trial completo acabou. Faça upgrade para continuar criando e gerenciando transações fixas.
-              </p>
+          <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0">
+            <div className="flex items-start sm:items-center">
+              <div className="text-red-600 mr-3 mt-0.5 sm:mt-0">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-medium text-red-800">Trial de 30 dias expirado</h3>
+                <p className="text-sm text-red-700 mt-1">
+                  Seu trial completo acabou. Faça upgrade para continuar criando e gerenciando transações fixas.
+                </p>
+              </div>
             </div>
             <button
               onClick={() => window.location.href = '/planos'}
-              className="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700 transition-colors font-medium"
+              className="w-full sm:w-auto bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700 transition-colors font-medium"
             >
               Renovar Agora
             </button>
@@ -169,32 +182,40 @@ export default function TransacoesFixasPage() {
         </div>
       )}
 
-      {/* Estatísticas */}
+      {/* Cards de Estatísticas - Mobile-First */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-6">
         <div className="bg-white rounded-lg shadow-sm border p-4 lg:p-6">
-          <div className="flex items-center">
-            <div className="text-blue-600 mr-3 text-xl">🔄</div>
-            <div>
-              <p className="text-sm text-gray-600">Total Recorrentes</p>
-              <p className="text-lg lg:text-xl font-semibold text-blue-600">{recurringTransactions.length}</p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="text-blue-600 mr-3 text-xl">🔄</div>
+              <div>
+                <p className="text-xs lg:text-sm text-gray-600">Total Recorrentes</p>
+                <p className="text-lg lg:text-xl font-semibold text-blue-600">{recurringTransactions.length}</p>
+              </div>
             </div>
           </div>
         </div>
+        
         <div className="bg-white rounded-lg shadow-sm border p-4 lg:p-6">
-          <div className="flex items-center">
-            <div className="text-green-600 mr-3 text-xl">✅</div>
-            <div>
-              <p className="text-sm text-gray-600">Ativas</p>
-              <p className="text-lg lg:text-xl font-semibold text-green-600">{activeRecurring.length}</p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="text-green-600 mr-3 text-xl">✅</div>
+              <div>
+                <p className="text-xs lg:text-sm text-gray-600">Ativas</p>
+                <p className="text-lg lg:text-xl font-semibold text-green-600">{activeRecurring.length}</p>
+              </div>
             </div>
           </div>
         </div>
+        
         <div className="bg-white rounded-lg shadow-sm border p-4 lg:p-6">
-          <div className="flex items-center">
-            <div className="text-gray-600 mr-3 text-xl">⏸️</div>
-            <div>
-              <p className="text-sm text-gray-600">Pausadas</p>
-              <p className="text-lg lg:text-xl font-semibold text-gray-600">{inactiveRecurring.length}</p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="text-gray-600 mr-3 text-xl">⏸️</div>
+              <div>
+                <p className="text-xs lg:text-sm text-gray-600">Pausadas</p>
+                <p className="text-lg lg:text-xl font-semibold text-gray-600">{inactiveRecurring.length}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -215,73 +236,164 @@ export default function TransacoesFixasPage() {
               <div className="divide-y divide-gray-100">
                 {activeRecurring.map((recurring) => (
                   <div key={recurring.id} className="p-4 lg:p-6 hover:bg-gray-50">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <span className="text-xl">{getFrequencyIcon(recurring.frequency)}</span>
-                          <div>
-                            <h4 className="font-semibold text-gray-900">{recurring.description}</h4>
-                            <p className="text-sm text-gray-600">
+                    {/* Layout Mobile */}
+                    <div className="block lg:hidden">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-start space-x-3 flex-1">
+                          <span className="text-2xl">{getFrequencyIcon(recurring.frequency)}</span>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-gray-900 text-base">{recurring.description}</h4>
+                            <p className="text-sm text-gray-600 mt-1">
                               {getFrequencyLabel(recurring.frequency)} • {getCategoryName(recurring.category_id)}
                             </p>
                           </div>
                         </div>
-                        
-                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mt-3 text-sm">
-                          <div>
-                            <p className="text-gray-500">Valor</p>
-                            <p className={`font-semibold ${recurring.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                              {recurring.type === 'income' ? '+' : '-'}{formatarValor(recurring.amount)}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-gray-500">Próxima Execução</p>
-                            <p className="font-medium">{formatarData(recurring.next_execution_date)}</p>
-                          </div>
-                          <div>
-                            <p className="text-gray-500">Cartão</p>
-                            <p className="font-medium truncate">{getCardName(recurring.card_id)}</p>
-                          </div>
+                        <div className={`text-right font-semibold text-lg ${recurring.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                          {recurring.type === 'income' ? '+' : '-'}{formatarValor(recurring.amount)}
                         </div>
                       </div>
                       
-                      <div className="flex items-center space-x-2 ml-4">
-                        <button 
-                          onClick={() => handleExecuteNow(recurring.id)}
-                          className={`p-2 rounded-lg transition-colors touch-manipulation ${
-                            isTrialExpired() 
-                              ? 'text-gray-400 cursor-not-allowed' 
-                              : 'text-blue-600 hover:bg-blue-50'
-                          }`}
-                          title={isTrialExpired() ? 'Trial expirado' : 'Executar Agora'}
-                          disabled={isTrialExpired()}
-                        >
-                          <Play className="h-4 w-4" />
-                        </button>
-                        <button 
-                          onClick={() => handleToggleActive(recurring.id, recurring.is_active)}
-                          className={`p-2 rounded-lg transition-colors touch-manipulation ${
-                            isTrialExpired() 
-                              ? 'text-gray-400 cursor-not-allowed' 
-                              : 'text-orange-600 hover:bg-orange-50'
-                          }`}
-                          title={isTrialExpired() ? 'Trial expirado' : 'Pausar'}
-                          disabled={isTrialExpired()}
-                        >
-                          <Pause className="h-4 w-4" />
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(recurring.id, recurring.description)}
-                          className={`p-2 rounded-lg transition-colors touch-manipulation ${
-                            isTrialExpired() 
-                              ? 'text-gray-400 cursor-not-allowed' 
-                              : 'text-red-600 hover:bg-red-50'
-                          }`}
-                          title={isTrialExpired() ? 'Trial expirado' : 'Excluir'}
-                          disabled={isTrialExpired()}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                      <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
+                        <div>
+                          <p className="text-gray-500">Próxima Execução</p>
+                          <p className="font-medium text-gray-900">{formatarData(recurring.next_execution_date)}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500">Cartão</p>
+                          <p className="font-medium text-gray-900 truncate">{getCardName(recurring.card_id)}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between space-x-2">
+                        <div className="flex items-center space-x-2">
+                          <button 
+                            onClick={() => handleExecuteNow(recurring.id)}
+                            className={`p-3 rounded-lg transition-colors touch-manipulation ${
+                              isTrialExpired() 
+                                ? 'text-gray-400 cursor-not-allowed bg-gray-100' 
+                                : 'text-blue-600 hover:bg-blue-50 bg-blue-50'
+                            }`}
+                            disabled={isTrialExpired()}
+                          >
+                            <Play className="h-4 w-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleEditRecurring(recurring)}
+                            className={`p-3 rounded-lg transition-colors touch-manipulation ${
+                              isTrialExpired() 
+                                ? 'text-gray-400 cursor-not-allowed bg-gray-100' 
+                                : 'text-green-600 hover:bg-green-50 bg-green-50'
+                            }`}
+                            disabled={isTrialExpired()}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <button 
+                            onClick={() => handleToggleActive(recurring.id, recurring.is_active)}
+                            className={`p-3 rounded-lg transition-colors touch-manipulation ${
+                              isTrialExpired() 
+                                ? 'text-gray-400 cursor-not-allowed bg-gray-100' 
+                                : 'text-orange-600 hover:bg-orange-50 bg-orange-50'
+                            }`}
+                            disabled={isTrialExpired()}
+                          >
+                            <Pause className="h-4 w-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(recurring.id, recurring.description)}
+                            className={`p-3 rounded-lg transition-colors touch-manipulation ${
+                              isTrialExpired() 
+                                ? 'text-gray-400 cursor-not-allowed bg-gray-100' 
+                                : 'text-red-600 hover:bg-red-50 bg-red-50'
+                            }`}
+                            disabled={isTrialExpired()}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Layout Desktop */}
+                    <div className="hidden lg:block">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <span className="text-xl">{getFrequencyIcon(recurring.frequency)}</span>
+                            <div>
+                              <h4 className="font-semibold text-gray-900">{recurring.description}</h4>
+                              <p className="text-sm text-gray-600">
+                                {getFrequencyLabel(recurring.frequency)} • {getCategoryName(recurring.category_id)}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mt-3 text-sm">
+                            <div>
+                              <p className="text-gray-500">Valor</p>
+                              <p className={`font-semibold ${recurring.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                                {recurring.type === 'income' ? '+' : '-'}{formatarValor(recurring.amount)}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">Próxima Execução</p>
+                              <p className="font-medium">{formatarData(recurring.next_execution_date)}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">Cartão</p>
+                              <p className="font-medium truncate">{getCardName(recurring.card_id)}</p>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-2 ml-4">
+                          <button 
+                            onClick={() => handleExecuteNow(recurring.id)}
+                            className={`p-2 rounded-lg transition-colors touch-manipulation ${
+                              isTrialExpired() 
+                                ? 'text-gray-400 cursor-not-allowed' 
+                                : 'text-blue-600 hover:bg-blue-50'
+                            }`}
+                            disabled={isTrialExpired()}
+                          >
+                            <Play className="h-4 w-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleEditRecurring(recurring)}
+                            className={`p-2 rounded-lg transition-colors touch-manipulation ${
+                              isTrialExpired() 
+                                ? 'text-gray-400 cursor-not-allowed' 
+                                : 'text-green-600 hover:bg-green-50'
+                            }`}
+                            disabled={isTrialExpired()}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleToggleActive(recurring.id, recurring.is_active)}
+                            className={`p-2 rounded-lg transition-colors touch-manipulation ${
+                              isTrialExpired() 
+                                ? 'text-gray-400 cursor-not-allowed' 
+                                : 'text-orange-600 hover:bg-orange-50'
+                            }`}
+                            disabled={isTrialExpired()}
+                          >
+                            <Pause className="h-4 w-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(recurring.id, recurring.description)}
+                            className={`p-2 rounded-lg transition-colors touch-manipulation ${
+                              isTrialExpired() 
+                                ? 'text-gray-400 cursor-not-allowed' 
+                                : 'text-red-600 hover:bg-red-50'
+                            }`}
+                            disabled={isTrialExpired()}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -302,57 +414,130 @@ export default function TransacoesFixasPage() {
               <div className="divide-y divide-gray-100">
                 {inactiveRecurring.map((recurring) => (
                   <div key={recurring.id} className="p-4 lg:p-6 hover:bg-gray-50 opacity-60">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <span className="text-xl grayscale">{getFrequencyIcon(recurring.frequency)}</span>
-                          <div>
-                            <h4 className="font-semibold text-gray-700">{recurring.description}</h4>
-                            <p className="text-sm text-gray-500">
+                    {/* Layout Mobile */}
+                    <div className="block lg:hidden">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-start space-x-3 flex-1">
+                          <span className="text-2xl grayscale">{getFrequencyIcon(recurring.frequency)}</span>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-gray-700 text-base">{recurring.description}</h4>
+                            <p className="text-sm text-gray-500 mt-1">
                               {getFrequencyLabel(recurring.frequency)} • {getCategoryName(recurring.category_id)} • Pausada
                             </p>
                           </div>
                         </div>
-                        
-                        <div className="grid grid-cols-2 lg:grid-cols-2 gap-4 mt-3 text-sm">
-                          <div>
-                            <p className="text-gray-500">Valor</p>
-                            <p className="font-semibold text-gray-600">
-                              {recurring.type === 'income' ? '+' : '-'}{formatarValor(recurring.amount)}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-gray-500">Cartão</p>
-                            <p className="font-medium truncate text-gray-600">{getCardName(recurring.card_id)}</p>
-                          </div>
+                        <div className="text-right font-semibold text-lg text-gray-600">
+                          {recurring.type === 'income' ? '+' : '-'}{formatarValor(recurring.amount)}
                         </div>
                       </div>
                       
-                      <div className="flex items-center space-x-2 ml-4">
+                      <div className="mb-4 text-sm">
+                        <p className="text-gray-500">Cartão</p>
+                        <p className="font-medium text-gray-600 truncate">{getCardName(recurring.card_id)}</p>
+                      </div>
+                      
+                      <div className="flex items-center justify-between space-x-2">
                         <button 
                           onClick={() => handleToggleActive(recurring.id, recurring.is_active)}
-                          className={`p-2 rounded-lg transition-colors touch-manipulation ${
+                          className={`p-3 rounded-lg transition-colors touch-manipulation ${
                             isTrialExpired() 
-                              ? 'text-gray-400 cursor-not-allowed' 
-                              : 'text-green-600 hover:bg-green-50'
+                              ? 'text-gray-400 cursor-not-allowed bg-gray-100' 
+                              : 'text-green-600 hover:bg-green-50 bg-green-50'
                           }`}
-                          title={isTrialExpired() ? 'Trial expirado' : 'Reativar'}
                           disabled={isTrialExpired()}
                         >
                           <Play className="h-4 w-4" />
                         </button>
-                        <button 
-                          onClick={() => handleDelete(recurring.id, recurring.description)}
-                          className={`p-2 rounded-lg transition-colors touch-manipulation ${
-                            isTrialExpired() 
-                              ? 'text-gray-400 cursor-not-allowed' 
-                              : 'text-red-600 hover:bg-red-50'
-                          }`}
-                          title={isTrialExpired() ? 'Trial expirado' : 'Excluir'}
-                          disabled={isTrialExpired()}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        <div className="flex items-center space-x-2">
+                          <button 
+                            onClick={() => handleEditRecurring(recurring)}
+                            className={`p-3 rounded-lg transition-colors touch-manipulation ${
+                              isTrialExpired() 
+                                ? 'text-gray-400 cursor-not-allowed bg-gray-100' 
+                                : 'text-blue-600 hover:bg-blue-50 bg-blue-50'
+                            }`}
+                            disabled={isTrialExpired()}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(recurring.id, recurring.description)}
+                            className={`p-3 rounded-lg transition-colors touch-manipulation ${
+                              isTrialExpired() 
+                                ? 'text-gray-400 cursor-not-allowed bg-gray-100' 
+                                : 'text-red-600 hover:bg-red-50 bg-red-50'
+                            }`}
+                            disabled={isTrialExpired()}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Layout Desktop */}
+                    <div className="hidden lg:block">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <span className="text-xl grayscale">{getFrequencyIcon(recurring.frequency)}</span>
+                            <div>
+                              <h4 className="font-semibold text-gray-700">{recurring.description}</h4>
+                              <p className="text-sm text-gray-500">
+                                {getFrequencyLabel(recurring.frequency)} • {getCategoryName(recurring.category_id)} • Pausada
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 lg:grid-cols-2 gap-4 mt-3 text-sm">
+                            <div>
+                              <p className="text-gray-500">Valor</p>
+                              <p className="font-semibold text-gray-600">
+                                {recurring.type === 'income' ? '+' : '-'}{formatarValor(recurring.amount)}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">Cartão</p>
+                              <p className="font-medium truncate text-gray-600">{getCardName(recurring.card_id)}</p>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-2 ml-4">
+                          <button 
+                            onClick={() => handleToggleActive(recurring.id, recurring.is_active)}
+                            className={`p-2 rounded-lg transition-colors touch-manipulation ${
+                              isTrialExpired() 
+                                ? 'text-gray-400 cursor-not-allowed' 
+                                : 'text-green-600 hover:bg-green-50'
+                            }`}
+                            disabled={isTrialExpired()}
+                          >
+                            <Play className="h-4 w-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleEditRecurring(recurring)}
+                            className={`p-2 rounded-lg transition-colors touch-manipulation ${
+                              isTrialExpired() 
+                                ? 'text-gray-400 cursor-not-allowed' 
+                                : 'text-blue-600 hover:bg-blue-50'
+                            }`}
+                            disabled={isTrialExpired()}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(recurring.id, recurring.description)}
+                            className={`p-2 rounded-lg transition-colors touch-manipulation ${
+                              isTrialExpired() 
+                                ? 'text-gray-400 cursor-not-allowed' 
+                                : 'text-red-600 hover:bg-red-50'
+                            }`}
+                            disabled={isTrialExpired()}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -370,17 +555,21 @@ export default function TransacoesFixasPage() {
           </p>
           <button 
             onClick={handleNewRecurring}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium touch-manipulation"
+            className="w-full sm:w-auto bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium touch-manipulation"
           >
             {isTrialExpired() ? 'Renovar para Criar' : '+ Criar Primeira Transação Recorrente'}
           </button>
         </div>
       )}
 
-      {/* Modal de Nova Transação Recorrente */}
+      {/* Modal de Nova/Editar Transação Recorrente */}
       <RecurringTransactionModal
         isOpen={showRecurringModal}
-        onClose={() => setShowRecurringModal(false)}
+        onClose={() => {
+          setShowRecurringModal(false)
+          setEditingRecurring(null)
+        }}
+        recurringTransaction={editingRecurring}
       />
     </div>
   )

@@ -110,269 +110,409 @@ export default function CartoesPage() {
 
   return (
     <ProtectedRoute>
-      <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">Cartões</h1>
-        <button 
-          onClick={handleNewCard}
-          className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${buttonProps.className}`}
-          title={buttonProps.title}
-        >
-          <ButtonIcon className="h-4 w-4" />
-          <span>{buttonProps.text}</span>
-        </button>
-      </div>
-
-      {/* Alert de trial expirado */}
-      {isTrialExpired() && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <div className="flex items-center">
-            <div className="text-red-600 mr-3">
-              <AlertTriangle className="h-5 w-5" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-sm font-medium text-red-800">Trial de 30 dias expirado</h3>
-              <p className="text-sm text-red-700 mt-1">
-                Seu trial completo acabou. Faça upgrade para continuar criando e gerenciando cartões.
-              </p>
-            </div>
-            <button
-              onClick={() => window.location.href = '/planos'}
-              className="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700 transition-colors font-medium"
-            >
-              Renovar Agora
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Filtros */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex flex-col sm:flex-row gap-4 items-center">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Buscar por nome ou banco..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-          <select
-            value={filtroTipo}
-            onChange={(e) => setFiltroTipo(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="todos">Todos os tipos</option>
-            <option value="credit">Crédito</option>
-            <option value="debit">Débito</option>
-            <option value="cash">Dinheiro</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <div className="flex items-center">
-            <div className="text-blue-600 mr-3">💳</div>
-            <div>
-              <p className="text-sm text-gray-600">Total de Cartões</p>
-              <p className="text-xl font-semibold text-gray-900">{cards.length}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <div className="flex items-center">
-            <div className="text-green-600 mr-3">✅</div>
-            <div>
-              <p className="text-sm text-gray-600">Cartões Ativos</p>
-              <p className="text-xl font-semibold text-green-600">
-                {cards.filter(c => c.is_active).length}
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <div className="flex items-center">
-            <div className="text-purple-600 mr-3">💰</div>
-            <div>
-              <p className="text-sm text-gray-600">Cartões Crédito</p>
-              <p className="text-xl font-semibold text-purple-600">
-                {cards.filter(c => c.type === 'credit').length}
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <div className="flex items-center">
-            <div className="text-orange-600 mr-3">🏦</div>
-            <div>
-              <p className="text-sm text-gray-600">Bancos Diferentes</p>
-              <p className="text-xl font-semibold text-orange-600">
-                {[...new Set(cards.map(c => c.bank))].length}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Lista de Cartões */}
-      {cartoesFiltrados.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {cartoesFiltrados.map((cartao) => {
-            const { total, transactions } = getCardSummary(cartao.id)
-            return (
-              <div key={cartao.id} className="bg-white rounded-lg shadow-sm border overflow-hidden hover:shadow-md transition-shadow">
-                {/* Header do cartão */}
-                <div 
-                  className="h-32 p-4 text-white relative"
-                  style={{ backgroundColor: cartao.color }}
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="text-2xl mb-2">{getCardIcon(cartao.type)}</div>
-                      <h3 className="font-semibold text-lg">{cartao.name}</h3>
-                      <p className="text-sm opacity-90">{cartao.bank}</p>
-                      {cartao.last_digits && (
-                        <p className="text-xs opacity-75">**** {cartao.last_digits}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => handleUpdateCard(cartao.id, { is_active: !cartao.is_active })}
-                        className={`p-1 rounded ${
-                          isTrialExpired() 
-                            ? 'bg-white/10 cursor-not-allowed' 
-                            : cartao.is_active ? 'bg-white/20' : 'bg-red-500/20'
-                        }`}
-                        disabled={isTrialExpired()}
-                        title={isTrialExpired() ? 'Trial expirado' : (cartao.is_active ? 'Desativar' : 'Ativar')}
-                      >
-                        {cartao.is_active ? 
-                          <Eye className="h-4 w-4" /> : 
-                          <EyeOff className="h-4 w-4" />
-                        }
-                      </button>
-                    </div>
-                  </div>
-                  <div className="absolute bottom-4 right-4">
-                    <span className="text-xs opacity-75 uppercase font-medium">
-                      {getCardTypeLabel(cartao.type)}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Body do cartão */}
-                <div className="p-4">
-                  <div className="space-y-3">
-                    {cartao.card_limit && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Limite:</span>
-                        <span className="font-medium">{formatarValor(cartao.card_limit)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Gasto Total:</span>
-                      <span className={`font-medium ${total > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                        {formatarValor(total)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Transações:</span>
-                      <span className="font-medium">{transactions}</span>
-                    </div>
-                    {cartao.card_limit && total > 0 && (
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-xs text-gray-600">
-                          <span>Limite usado:</span>
-                          <span>{((total / cartao.card_limit) * 100).toFixed(1)}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div 
-                            className={`h-2 rounded-full ${
-                              (total / cartao.card_limit) * 100 > 80 ? 'bg-red-500' : 
-                              (total / cartao.card_limit) * 100 > 60 ? 'bg-yellow-500' : 'bg-green-500'
-                            }`}
-                            style={{ width: `${Math.min((total / cartao.card_limit) * 100, 100)}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Ações */}
-                  <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      cartao.is_active 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {cartao.is_active ? 'Ativo' : 'Inativo'}
-                    </span>
-                    <div className="flex items-center space-x-2">
-                      <button 
-                        onClick={() => handleEditCard(cartao.id)}
-                        className={`p-2 rounded-lg transition-colors ${
-                          isTrialExpired() 
-                            ? 'text-gray-400 cursor-not-allowed' 
-                            : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'
-                        }`}
-                        disabled={isTrialExpired()}
-                        title={isTrialExpired() ? 'Trial expirado' : 'Editar cartão'}
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteCard(cartao.id)}
-                        className={`p-2 rounded-lg transition-colors ${
-                          isTrialExpired() 
-                            ? 'text-gray-400 cursor-not-allowed' 
-                            : 'text-gray-400 hover:text-red-600 hover:bg-red-50'
-                        }`}
-                        disabled={isTrialExpired()}
-                        title={isTrialExpired() ? 'Trial expirado' : 'Excluir cartão'}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      ) : (
-        <div className="bg-white rounded-lg shadow-sm border p-12 text-center">
-          <div className="text-gray-400 text-6xl mb-4">💳</div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum cartão encontrado</h3>
-          <p className="text-gray-600 mb-4">
-            {searchTerm || filtroTipo !== 'todos' 
-              ? 'Tente ajustar os filtros ou criar um novo cartão.' 
-              : 'Comece adicionando seu primeiro cartão.'
-            }
-          </p>
+      <div className="space-y-4 lg:space-y-6">
+        {/* Header Mobile-First */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-3 sm:space-y-0">
+          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">💳 Cartões</h1>
           <button 
             onClick={handleNewCard}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            className={`w-full sm:w-auto px-4 py-2 rounded-lg flex items-center justify-center space-x-2 ${buttonProps.className}`}
+            title={buttonProps.title}
           >
-            {isTrialExpired() ? 'Renovar para Criar' : 'Adicionar Primeiro Cartão'}
+            <ButtonIcon className="h-4 w-4" />
+            <span>{buttonProps.text}</span>
           </button>
         </div>
-      )}
 
-      {/* Modal para adicionar/editar cartão */}
-      {(showModal || editingCard) && (
+        {/* Alert de trial expirado - Mobile-First */}
+        {isTrialExpired() && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0">
+              <div className="flex items-center flex-1">
+                <div className="text-red-600 mr-3 flex-shrink-0">
+                  <AlertTriangle className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-sm font-medium text-red-800">Trial de 30 dias expirado</h3>
+                  <p className="text-sm text-red-700 mt-1">
+                    Seu trial completo acabou. Faça upgrade para continuar criando e gerenciando cartões.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => window.location.href = '/planos'}
+                className="w-full sm:w-auto bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700 transition-colors font-medium"
+              >
+                Renovar Agora
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Filtros Mobile-First */}
+        <div className="bg-white rounded-lg shadow-sm border p-4 lg:p-6">
+          <div className="flex flex-col space-y-3 sm:space-y-0 sm:flex-row sm:gap-4 sm:items-center">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Buscar por nome ou banco..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <select
+              value={filtroTipo}
+              onChange={(e) => setFiltroTipo(e.target.value)}
+              className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="todos">Todos os tipos</option>
+              <option value="credit">Crédito</option>
+              <option value="debit">Débito</option>
+              <option value="cash">Dinheiro</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Cards de Estatísticas - Mobile-First */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6">
+          <div className="bg-white rounded-lg shadow-sm border p-3 lg:p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="text-xl lg:text-2xl mr-2 lg:mr-3">💳</div>
+                <div>
+                  <p className="text-xs lg:text-sm text-gray-600">Total de Cartões</p>
+                  <p className="text-lg lg:text-xl font-semibold text-gray-900">{cards.length}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm border p-3 lg:p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="text-xl lg:text-2xl mr-2 lg:mr-3">✅</div>
+                <div>
+                  <p className="text-xs lg:text-sm text-gray-600">Cartões Ativos</p>
+                  <p className="text-lg lg:text-xl font-semibold text-green-600">
+                    {cards.filter(c => c.is_active).length}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm border p-3 lg:p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="text-xl lg:text-2xl mr-2 lg:mr-3">💰</div>
+                <div>
+                  <p className="text-xs lg:text-sm text-gray-600">Cartões Crédito</p>
+                  <p className="text-lg lg:text-xl font-semibold text-purple-600">
+                    {cards.filter(c => c.type === 'credit').length}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm border p-3 lg:p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="text-xl lg:text-2xl mr-2 lg:mr-3">🏦</div>
+                <div>
+                  <p className="text-xs lg:text-sm text-gray-600">Bancos Diferentes</p>
+                  <p className="text-lg lg:text-xl font-semibold text-orange-600">
+                    {[...new Set(cards.map(c => c.bank))].length}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Lista de Cartões - Layout Responsivo */}
+        {cartoesFiltrados.length > 0 ? (
+          <div className="space-y-4">
+            {/* Layout Mobile */}
+            <div className="block lg:hidden space-y-3">
+              {cartoesFiltrados.map((cartao) => {
+                const { total, transactions } = getCardSummary(cartao.id)
+                return (
+                  <div key={cartao.id} className="bg-white rounded-lg shadow-sm border overflow-hidden">
+                    {/* Header do cartão mobile */}
+                    <div 
+                      className="h-24 p-3 text-white relative"
+                      style={{ backgroundColor: cartao.color }}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <div className="text-lg">{getCardIcon(cartao.type)}</div>
+                            <h3 className="font-semibold text-sm truncate">{cartao.name}</h3>
+                          </div>
+                          <p className="text-xs opacity-90">{cartao.bank}</p>
+                          {cartao.last_digits && (
+                            <p className="text-xs opacity-75">**** {cartao.last_digits}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => handleUpdateCard(cartao.id, { is_active: !cartao.is_active })}
+                            className={`p-1 rounded ${
+                              isTrialExpired() 
+                                ? 'bg-white/10 cursor-not-allowed' 
+                                : cartao.is_active ? 'bg-white/20' : 'bg-red-500/20'
+                            }`}
+                            disabled={isTrialExpired()}
+                            title={isTrialExpired() ? 'Trial expirado' : (cartao.is_active ? 'Desativar' : 'Ativar')}
+                          >
+                            {cartao.is_active ? 
+                              <Eye className="h-3 w-3" /> : 
+                              <EyeOff className="h-3 w-3" />
+                            }
+                          </button>
+                        </div>
+                      </div>
+                      <div className="absolute bottom-2 right-3">
+                        <span className="text-xs opacity-75 uppercase font-medium">
+                          {getCardTypeLabel(cartao.type)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Body do cartão mobile */}
+                    <div className="p-3">
+                      <div className="grid grid-cols-2 gap-3 text-sm mb-3">
+                        {cartao.card_limit && (
+                          <div>
+                            <span className="text-gray-600">Limite:</span>
+                            <div className="font-medium">{formatarValor(cartao.card_limit)}</div>
+                          </div>
+                        )}
+                        <div>
+                          <span className="text-gray-600">Gasto:</span>
+                          <div className={`font-medium ${total > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                            {formatarValor(total)}
+                          </div>
+                        </div>
+                      </div>
+
+                      {cartao.card_limit && total > 0 && (
+                        <div className="mb-3">
+                          <div className="flex justify-between text-xs text-gray-600 mb-1">
+                            <span>Limite usado:</span>
+                            <span>{((total / cartao.card_limit) * 100).toFixed(1)}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div 
+                              className={`h-2 rounded-full ${
+                                (total / cartao.card_limit) * 100 > 80 ? 'bg-red-500' : 
+                                (total / cartao.card_limit) * 100 > 60 ? 'bg-yellow-500' : 'bg-green-500'
+                              }`}
+                              style={{ width: `${Math.min((total / cartao.card_limit) * 100, 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Ações mobile */}
+                      <div className="flex items-center space-x-2 pt-3 border-t border-gray-100">
+                        <div className={`text-xs px-2 py-1 rounded-full ${
+                          cartao.is_active 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {cartao.is_active ? 'Ativo' : 'Inativo'}
+                        </div>
+                        <div className="flex items-center space-x-2 ml-auto">
+                          <button 
+                            onClick={() => handleEditCard(cartao.id)}
+                            className={`p-2 rounded-lg transition-colors ${
+                              isTrialExpired() 
+                                ? 'text-gray-400 cursor-not-allowed bg-gray-50' 
+                                : 'text-blue-600 bg-blue-50 hover:bg-blue-100'
+                            }`}
+                            disabled={isTrialExpired()}
+                            title={isTrialExpired() ? 'Trial expirado' : 'Editar cartão'}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteCard(cartao.id)}
+                            className={`p-2 rounded-lg transition-colors ${
+                              isTrialExpired() 
+                                ? 'text-gray-400 cursor-not-allowed bg-gray-50' 
+                                : 'text-red-600 bg-red-50 hover:bg-red-100'
+                            }`}
+                            disabled={isTrialExpired()}
+                            title={isTrialExpired() ? 'Trial expirado' : 'Excluir cartão'}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Layout Desktop */}
+            <div className="hidden lg:grid lg:grid-cols-2 xl:grid-cols-3 gap-6">
+              {cartoesFiltrados.map((cartao) => {
+                const { total, transactions } = getCardSummary(cartao.id)
+                return (
+                  <div key={cartao.id} className="bg-white rounded-lg shadow-sm border overflow-hidden hover:shadow-md transition-shadow">
+                    {/* Header do cartão */}
+                    <div 
+                      className="h-32 p-4 text-white relative"
+                      style={{ backgroundColor: cartao.color }}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="text-2xl mb-2">{getCardIcon(cartao.type)}</div>
+                          <h3 className="font-semibold text-lg">{cartao.name}</h3>
+                          <p className="text-sm opacity-90">{cartao.bank}</p>
+                          {cartao.last_digits && (
+                            <p className="text-xs opacity-75">**** {cartao.last_digits}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => handleUpdateCard(cartao.id, { is_active: !cartao.is_active })}
+                            className={`p-1 rounded ${
+                              isTrialExpired() 
+                                ? 'bg-white/10 cursor-not-allowed' 
+                                : cartao.is_active ? 'bg-white/20' : 'bg-red-500/20'
+                            }`}
+                            disabled={isTrialExpired()}
+                            title={isTrialExpired() ? 'Trial expirado' : (cartao.is_active ? 'Desativar' : 'Ativar')}
+                          >
+                            {cartao.is_active ? 
+                              <Eye className="h-4 w-4" /> : 
+                              <EyeOff className="h-4 w-4" />
+                            }
+                          </button>
+                        </div>
+                      </div>
+                      <div className="absolute bottom-4 right-4">
+                        <span className="text-xs opacity-75 uppercase font-medium">
+                          {getCardTypeLabel(cartao.type)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Body do cartão */}
+                    <div className="p-4">
+                      <div className="space-y-3">
+                        {cartao.card_limit && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Limite:</span>
+                            <span className="font-medium">{formatarValor(cartao.card_limit)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">Gasto Total:</span>
+                          <span className={`font-medium ${total > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                            {formatarValor(total)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">Transações:</span>
+                          <span className="font-medium">{transactions}</span>
+                        </div>
+                        {cartao.card_limit && total > 0 && (
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-xs text-gray-600">
+                              <span>Limite usado:</span>
+                              <span>{((total / cartao.card_limit) * 100).toFixed(1)}%</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div 
+                                className={`h-2 rounded-full ${
+                                  (total / cartao.card_limit) * 100 > 80 ? 'bg-red-500' : 
+                                  (total / cartao.card_limit) * 100 > 60 ? 'bg-yellow-500' : 'bg-green-500'
+                                }`}
+                                style={{ width: `${Math.min((total / cartao.card_limit) * 100, 100)}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Ações */}
+                      <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          cartao.is_active 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {cartao.is_active ? 'Ativo' : 'Inativo'}
+                        </span>
+                        <div className="flex items-center space-x-2">
+                          <button 
+                            onClick={() => handleEditCard(cartao.id)}
+                            className={`p-2 rounded-lg transition-colors ${
+                              isTrialExpired() 
+                                ? 'text-gray-400 cursor-not-allowed' 
+                                : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'
+                            }`}
+                            disabled={isTrialExpired()}
+                            title={isTrialExpired() ? 'Trial expirado' : 'Editar cartão'}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteCard(cartao.id)}
+                            className={`p-2 rounded-lg transition-colors ${
+                              isTrialExpired() 
+                                ? 'text-gray-400 cursor-not-allowed' 
+                                : 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                            }`}
+                            disabled={isTrialExpired()}
+                            title={isTrialExpired() ? 'Trial expirado' : 'Excluir cartão'}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg shadow-sm border p-8 lg:p-12 text-center">
+            <div className="max-w-md mx-auto">
+              <div className="w-16 h-16 lg:w-20 lg:h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-3xl lg:text-4xl">💳</span>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum cartão encontrado</h3>
+              <p className="text-gray-600 text-sm lg:text-base mb-4">
+                {cards.length === 0 
+                  ? 'Comece adicionando seus cartões e contas para organizar suas transações.' 
+                  : 'Tente ajustar os filtros para encontrar o cartão desejado.'
+                }
+              </p>
+              <button 
+                onClick={handleNewCard}
+                className="w-full sm:w-auto bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                {isTrialExpired() ? 'Renovar para Criar' : '+ Novo Cartão'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Novo/Editar Cartão */}
         <CardModal 
-          isOpen={showModal || !!editingCard}
+          isOpen={showModal || editingCard !== null} 
           onClose={() => {
             setShowModal(false)
             setEditingCard(null)
           }}
           cardId={editingCard}
         />
-      )}
       </div>
     </ProtectedRoute>
   )

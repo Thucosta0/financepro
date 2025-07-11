@@ -75,9 +75,11 @@ export interface Transaction {
   category_id: string
   card_id: string
   transaction_date: string
+  due_date?: string
   is_recurring: boolean
   recurring_transaction_id?: string
   notes?: string
+  is_completed?: boolean
   created_at: string
   updated_at: string
   category?: Category
@@ -120,7 +122,10 @@ export interface Budget {
 export const getCurrentUser = async () => {
   const { data: { user }, error } = await supabase.auth.getUser()
   if (error) {
-    console.error('Error getting user:', error)
+    // Não logar erro se for apenas sessão ausente (situação normal)
+    if (error.message !== 'Auth session missing!') {
+      console.error('Error getting user:', error)
+    }
     return null
   }
   return user
