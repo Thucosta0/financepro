@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { CreditCard, Receipt, Target, Menu, X, Layers, Repeat, BarChart3, Wallet, LogOut, User, DollarSign, Home, PieChart, Folder, Crown } from 'lucide-react'
+import { CreditCard, Receipt, Target, Menu, X, Layers, BarChart3, Wallet, LogOut, User, DollarSign, Home, PieChart, Folder, Crown } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/context/auth-context'
 import { supabase } from '@/lib/supabase-client'
@@ -10,7 +10,6 @@ import { supabase } from '@/lib/supabase-client'
 const menuItems = [
   { name: 'Dashboard', href: '/dashboard', icon: Home },
   { name: 'Transações', href: '/transacoes', icon: Receipt },
-  { name: 'Transações Fixas', href: '/transacoes-fixas', icon: Repeat },
   { name: 'Categorias', href: '/categorias', icon: Folder },
   { name: 'Cartões', href: '/cartoes', icon: CreditCard },
   { name: 'Orçamento', href: '/orcamento', icon: PieChart },

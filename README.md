@@ -22,7 +22,7 @@ Se você encontrou o erro `"No such price: 'COLE_AQUI_SEU_PRICE_ID_CORRETO'"`, j
 - ✅ **Placeholders removidos** do código
 - ✅ **Variáveis de ambiente** configuradas corretamente
 - ✅ **Validações adicionadas** na API para evitar erros
-- ✅ **Página de teste criada** em `/test-stripe`
+- ✅ **Configuração segura** implementada
 - ✅ **Guia completo** no arquivo `STRIPE_SETUP_GUIDE.md`
 
 **Para configurar:**
@@ -34,7 +34,7 @@ STRIPE_PRODUCT_ID=prod_SeuProductId
 STRIPE_PRICE_ID=price_SeuPriceId
 ```
 
-2. **Teste a configuração:** Acesse `/test-stripe` para verificar
+2. **Verifique a configuração:** Teste os pagamentos em ambiente de desenvolvimento
 3. **Consulte o guia:** Leia `STRIPE_SETUP_GUIDE.md` para setup completo
 
 ### 🎉 **Trial Completo SEM Limitações**
@@ -66,7 +66,7 @@ O **FinancePRO** é uma aplicação web moderna e completa para gestão financei
 - 🎯 **Orçamentos Inteligentes** - Monitoramento e alertas automáticos
 - 🤖 **Assistente IA** - Dicas e consultoria financeira personalizada
 - 📱 **Responsivo** - Funciona perfeitamente em todos os dispositivos
-- 🔄 **Transações Recorrentes** - Automatização de lançamentos fixos
+
 - 📈 **Relatórios Avançados** - Exportação em CSV e PDF
 
 ---
@@ -121,7 +121,7 @@ O **FinancePRO** é uma aplicação web moderna e completa para gestão financei
 ### 💰 **Transações**
 - ✅ Lançamento de receitas e despesas
 - ✅ Categorização automática
-- ✅ Transações recorrentes
+
 - ✅ Filtros avançados (data, categoria, valor, cartão)
 - ✅ Busca por descrição
 - ✅ Exportação de relatórios (CSV/PDF)
@@ -186,8 +186,7 @@ Execute os scripts SQL na ordem:
 ```sql
 -- No SQL Editor do Supabase:
 1. database/schema.sql      -- Estrutura das tabelas
-2. database/seed.sql        -- Dados iniciais
-3. database/setup-storage.sql -- Configuração de storage
+2. database/setup-storage.sql -- Configuração de storage
 ```
 
 ### **5. Execute o projeto**

@@ -128,13 +128,7 @@ export default function LandingPage() {
       color: "from-blue-500 to-indigo-500",
       delay: 200
     },
-    {
-      icon: <Calendar className="h-8 w-8" />,
-      title: "Transações Recorrentes",
-      description: "Automatize pagamentos fixos como salário, aluguel e contas mensais",
-      color: "from-purple-500 to-violet-500",
-      delay: 400
-    },
+
     {
       icon: <PieChart className="h-8 w-8" />,
       title: "Relatórios Visuais",

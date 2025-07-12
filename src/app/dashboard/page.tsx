@@ -8,7 +8,7 @@ import { useSubscription } from '@/hooks/use-subscription'
 import { OnboardingWizard } from '@/components/onboarding-wizard'
 import { Charts } from '@/components/dashboard/charts'
 import { NewTransactionModal } from '@/components/new-transaction-modal'
-import { RecurringTransactionModal } from '@/components/recurring-transaction-modal'
+
 import { ProtectedRoute } from '@/components/protected-route'
 import { Plus, TrendingUp, TrendingDown, DollarSign, Hash, AlertTriangle, CheckCircle, Clock, Users } from 'lucide-react'
 
@@ -19,7 +19,7 @@ export default function DashboardPage() {
   const { canPerformAction, getStatusText, isInTrial, isTrialExpired, getTrialDaysRemaining } = useSubscription()
   
   const [showNewTransactionModal, setShowNewTransactionModal] = useState(false)
-  const [showRecurringModal, setShowRecurringModal] = useState(false)
+
   const [showOnboarding, setShowOnboarding] = useState(false)
 
   // Detectar se precisa de configuração inicial
@@ -142,14 +142,7 @@ export default function DashboardPage() {
                   <span>{transactionButtonProps.text}</span>
                 </button>
                 
-                <button 
-                  onClick={() => setShowRecurringModal(true)}
-                  className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center space-x-2 transition-all"
-                  disabled={!canCreateTransactionFull}
-                >
-                  <Clock className="h-5 w-5" />
-                  <span>Transação Fixa</span>
-                </button>
+
               </div>
             </div>
 
@@ -383,10 +376,7 @@ export default function DashboardPage() {
           onClose={() => setShowNewTransactionModal(false)}
         />
 
-        <RecurringTransactionModal
-          isOpen={showRecurringModal}
-          onClose={() => setShowRecurringModal(false)}
-        />
+        
 
         {/* Onboarding Wizard para contas novas */}
         {showOnboarding && (

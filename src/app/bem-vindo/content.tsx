@@ -355,18 +355,7 @@ export default function BemVindoContent() {
               </p>
             </div>
 
-            {/* Card 5 - Transações Fixas */}
-            <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-2xl p-6 border border-white border-opacity-20 hover:bg-opacity-15 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl group animate-fade-in-up delay-500">
-              <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-gradient-to-r from-red-500 to-rose-600 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-300">
-                  <Calendar className="h-6 w-6 text-white" />
-                </div>
-                <h3 className="text-xl font-semibold text-white">Transações Fixas</h3>
-              </div>
-              <p className="text-blue-100 text-sm leading-relaxed">
-                Configure transações recorrentes como salário, aluguel e assinaturas mensais.
-              </p>
-            </div>
+
 
             {/* Card 6 - Relatórios */}
             <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-2xl p-6 border border-white border-opacity-20 hover:bg-opacity-15 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl group animate-fade-in-up delay-600">

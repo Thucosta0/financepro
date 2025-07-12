@@ -46,7 +46,7 @@ export const PLANS = {
       '📊 Todos os relatórios e gráficos',
       '🤖 Assistente IA financeiro',
       '📈 Análises avançadas',
-      '🔄 Transações recorrentes',
+
       '🎯 Orçamentos inteligentes',
       '📤 Exportação de dados',
       '✨ Experiência Premium completa'
@@ -74,7 +74,7 @@ export const PLANS = {
       'Relatórios e gráficos avançados',
       'Análises financeiras profissionais',
       'Exportação de dados (Excel, PDF)',
-      'Transações recorrentes automáticas',
+
       'Orçamentos inteligentes',
       'Suporte prioritário via chat',
       'Assistente IA financeiro'

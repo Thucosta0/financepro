@@ -76,8 +76,6 @@ export interface Transaction {
   card_id: string
   transaction_date: string
   due_date?: string
-  is_recurring: boolean
-  recurring_transaction_id?: string
   notes?: string
   is_completed?: boolean
   created_at: string
@@ -86,24 +84,7 @@ export interface Transaction {
   card?: Card
 }
 
-export interface RecurringTransaction {
-  id: string
-  user_id: string
-  description: string
-  amount: number
-  type: 'income' | 'expense'
-  category_id: string
-  card_id: string
-  frequency: 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'annually'
-  start_date: string
-  end_date?: string
-  next_execution_date: string
-  is_active: boolean
-  created_at: string
-  updated_at: string
-  category?: Category
-  card?: Card
-}
+
 
 export interface Budget {
   id: string

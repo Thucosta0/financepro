@@ -335,7 +335,7 @@ function PlanosContent() {
                 '💳 Cartões e contas ilimitados',
                 '📊 Todos os relatórios e gráficos',
                 '🎯 Orçamentos inteligentes',
-                '🔄 Transações recorrentes',
+      
                 '✨ Experiência Premium completa'
               ].map((feature, index) => (
                 <li key={index} className="flex items-center gap-3">
@@ -414,7 +414,7 @@ function PlanosContent() {
                 'Relatórios e gráficos avançados',
                 'Análises financeiras profissionais',
                 'Exportação de dados (Excel, PDF)',
-                'Transações recorrentes automáticas',
+      
                 'Orçamentos inteligentes',
                 'Suporte prioritário via chat',
                 'Assistente IA financeiro'

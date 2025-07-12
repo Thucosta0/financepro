@@ -62,8 +62,7 @@ export function NewTransactionModal({ isOpen, onClose }: NewTransactionModalProp
       category_id: formData.category,
       card_id: formData.card,
       transaction_date: formData.date,
-      due_date: formData.dueDate || undefined,
-      is_recurring: false
+      due_date: formData.dueDate || undefined
     }
 
     addTransaction(transactionData)

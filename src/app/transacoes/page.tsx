@@ -350,7 +350,7 @@ export default function TransacoesPage() {
       return
     }
 
-    const headers = ['Data', 'Descrição', 'Categoria', 'Cartão', 'Tipo', 'Valor', 'Data Vencimento', 'Recorrente']
+            const headers = ['Data', 'Descrição', 'Categoria', 'Cartão', 'Tipo', 'Valor', 'Data Vencimento']
     const csvData = [
       headers.join(','),
       ...transacoesFiltradas.map(t => [
@@ -361,7 +361,7 @@ export default function TransacoesPage() {
         t.type === 'income' ? 'Receita' : 'Despesa',
         t.amount.toString().replace('.', ','),
         t.due_date ? formatarData(t.due_date) : 'Sem vencimento',
-        t.is_recurring ? 'Sim' : 'Não'
+        
       ].join(','))
     ].join('\n')
 
@@ -860,12 +860,7 @@ export default function TransacoesPage() {
                             <span className="text-orange-600">📅 {formatarData(transacao.due_date)}</span>
                           </>
                         )}
-                        {transacao.is_recurring && (
-                          <>
-                            <span>•</span>
-                            <span className="text-purple-600">🔄</span>
-                          </>
-                        )}
+
                         {transacao.is_completed && (
                           <>
                             <span>•</span>
@@ -956,12 +951,7 @@ export default function TransacoesPage() {
                             <span className="text-orange-600 font-medium">📅 Vence {formatarData(transacao.due_date)}</span>
                           </>
                         )}
-                        {transacao.is_recurring && (
-                          <>
-                            <span>•</span>
-                            <span className="text-purple-600">🔄 Recorrente</span>
-                          </>
-                        )}
+
                           {transacao.is_completed && (
                             <>
                               <span>•</span>

@@ -253,12 +253,7 @@ export default function SobrePage() {
                 description: "IA categoriza suas transações automaticamente",
                 color: "from-green-500 to-green-600"
               },
-              {
-                icon: <Zap className="h-8 w-8" />,
-                title: "Transações Recorrentes",
-                description: "Lembretes inteligentes e automatização",
-                color: "from-orange-500 to-orange-600"
-              },
+
               {
                 icon: <TrendingUp className="h-8 w-8" />,
                 title: "Relatórios Detalhados",

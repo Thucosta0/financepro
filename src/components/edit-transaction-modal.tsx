@@ -57,8 +57,8 @@ export function EditTransactionModal({ isOpen, onClose, transaction }: EditTrans
         transaction_date: formData.transaction_date,
         due_date: formData.due_date || undefined,
         notes: formData.notes.trim() || undefined,
-        is_recurring: transaction.is_recurring, // Manter valor original
-        recurring_transaction_id: transaction.recurring_transaction_id, // Manter valor original
+  
+        
         is_completed: transaction.is_completed // Manter valor original
       }
 

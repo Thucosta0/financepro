@@ -3,14 +3,14 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { useAuth } from './auth-context'
 import { supabase } from '@/lib/supabase-client'
-import type { Category, Card, Transaction, RecurringTransaction, Budget } from '@/lib/supabase-client'
+import type { Category, Card, Transaction, Budget } from '@/lib/supabase-client'
 
 interface FinancialContextType {
   // Estados
   categories: Category[]
   cards: Card[]
   transactions: Transaction[]
-  recurringTransactions: RecurringTransaction[]
+
   budgets: Budget[]
   
   // Paginação de transações
@@ -34,12 +34,7 @@ interface FinancialContextType {
   updateTransaction: (id: string, transaction: Partial<Transaction>) => Promise<void>
   deleteTransaction: (id: string) => Promise<void>
   
-  // Transações Recorrentes
-  addRecurringTransaction: (transaction: Omit<RecurringTransaction, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => Promise<void>
-  updateRecurringTransaction: (id: string, transaction: Partial<RecurringTransaction>) => Promise<void>
-  deleteRecurringTransaction: (id: string) => Promise<void>
-  executeRecurringTransaction: (id: string) => Promise<void>
-  processRecurringTransactions: () => Promise<void>
+
   
   // Orçamentos
   addBudget: (budget: Omit<Budget, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => Promise<void>
@@ -63,7 +58,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
   const [categories, setCategories] = useState<Category[]>([])
   const [cards, setCards] = useState<Card[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [recurringTransactions, setRecurringTransactions] = useState<RecurringTransaction[]>([])
+
   const [budgets, setBudgets] = useState<Budget[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
@@ -82,7 +77,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
       setCategories([])
       setCards([])
       setTransactions([])
-      setRecurringTransactions([])
+
       setBudgets([])
       // Reset paginação
       setTransactionsPage(0)
@@ -90,38 +85,9 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user])
 
-  // Processar transações recorrentes - OTIMIZADO: apenas se necessário
-  useEffect(() => {
-    if (!user || isLoading || recurringTransactions.length === 0) return
-    
-    // Verificar se há transações realmente vencidas antes de processar
-    const now = new Date()
-    const hasOverdue = recurringTransactions.some(rt => 
-      rt.is_active && new Date(rt.next_execution_date) <= now
-    )
-    
-    if (hasOverdue) {
-      processRecurringTransactions()
-    }
-  }, [user, isLoading, recurringTransactions])
 
-  // Processar transações recorrentes periodicamente - OTIMIZADO: 30min em vez de 10min
-  useEffect(() => {
-    if (!user || isLoading || recurringTransactions.length === 0) return
-    
-    const interval = setInterval(async () => {
-      const now = new Date()
-      const hasOverdue = recurringTransactions.some(rt => 
-        rt.is_active && new Date(rt.next_execution_date) <= now
-      )
-      
-      if (hasOverdue) {
-        await processRecurringTransactions()
-      }
-    }, 30 * 60 * 1000) // 30 minutos
-    
-    return () => clearInterval(interval)
-  }, [user, isLoading, recurringTransactions])
+
+
 
   const loadData = useCallback(async () => {
     if (!user) return
@@ -132,7 +98,6 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
         loadCategories(),
         loadCards(),
         loadTransactions(),
-        loadRecurringTransactions(),
         loadBudgets()
       ])
     } catch (error) {
@@ -218,26 +183,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     await loadTransactions(transactionsPage + 1)
   }
 
-  const loadRecurringTransactions = async () => {
-    if (!user) return
-    
-    const { data, error } = await supabase
-      .from('recurring_transactions')
-      .select(`
-        *,
-        category:categories(*),
-        card:cards!card_id(*)
-      `)
-      .eq('user_id', user.id)
-      .order('next_execution_date')
-    
-    if (error) {
-      console.error('Error loading recurring transactions:', error)
-      return
-    }
-    
-    setRecurringTransactions(data || [])
-  }
+
 
   const loadBudgets = async () => {
     if (!user) return
@@ -306,12 +252,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
         : transaction
     ))
     
-    // Atualizar também transações recorrentes
-    setRecurringTransactions(prev => prev.map(transaction => 
-      transaction.category_id === id 
-        ? { ...transaction, category: data }
-        : transaction
-    ))
+
     
     // Atualizar orçamentos relacionados
     setBudgets(prev => prev.map(budget => 
@@ -386,12 +327,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
         : transaction
     ))
     
-    // Atualizar também transações recorrentes
-    setRecurringTransactions(prev => prev.map(transaction => 
-      transaction.card_id === id 
-        ? { ...transaction, card: data }
-        : transaction
-    ))
+
   }
 
   const deleteCard = async (id: string) => {
@@ -448,8 +384,8 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
       category_id: transactionData.category_id,
       card_id: transactionData.card_id,
       transaction_date: transactionData.transaction_date,
-      is_recurring: transactionData.is_recurring,
-      recurring_transaction_id: transactionData.recurring_transaction_id,
+
+      
       notes: transactionData.notes,
       is_completed: transactionData.is_completed
     }
@@ -496,144 +432,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     setTransactions(prev => prev.filter(trans => trans.id !== id))
   }
 
-  // === TRANSAÇÕES RECORRENTES ===
-  const addRecurringTransaction = async (transactionData: Omit<RecurringTransaction, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
-    if (!user) return
-    
-    const { data, error } = await supabase
-      .from('recurring_transactions')
-      .insert({
-        ...transactionData,
-        user_id: user.id
-      })
-      .select(`
-        *,
-        category:categories(*),
-        card:cards!card_id(*)
-      `)
-      .single()
-    
-    if (error) {
-      console.error('Error adding recurring transaction:', error)
-      throw error
-    }
-    
-    setRecurringTransactions(prev => [...prev, data])
-  }
 
-  const updateRecurringTransaction = async (id: string, transactionData: Partial<RecurringTransaction>) => {
-    if (!user) return
-    
-    const { data, error } = await supabase
-      .from('recurring_transactions')
-      .update(transactionData)
-      .eq('id', id)
-      .eq('user_id', user.id)
-      .select(`
-        *,
-        category:categories(*),
-        card:cards!card_id(*)
-      `)
-      .single()
-    
-    if (error) {
-      console.error('Error updating recurring transaction:', error)
-      throw error
-    }
-    
-    setRecurringTransactions(prev => prev.map(trans => trans.id === id ? data : trans))
-  }
-
-  const deleteRecurringTransaction = async (id: string) => {
-    if (!user) return
-    
-    const { error } = await supabase
-      .from('recurring_transactions')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', user.id)
-    
-    if (error) {
-      console.error('Error deleting recurring transaction:', error)
-      throw error
-    }
-    
-    setRecurringTransactions(prev => prev.filter(trans => trans.id !== id))
-  }
-
-  const calculateNextExecutionDate = (frequency: string, currentDate: string): string => {
-    const date = new Date(currentDate)
-    
-    switch (frequency) {
-      case 'weekly':
-        date.setDate(date.getDate() + 7)
-        break
-      case 'monthly':
-        date.setMonth(date.getMonth() + 1)
-        break
-      case 'yearly':
-        date.setFullYear(date.getFullYear() + 1)
-        break
-      default:
-        date.setDate(date.getDate() + 1)
-    }
-    
-    return date.toISOString().split('T')[0]
-  }
-
-  const executeRecurringTransaction = async (id: string) => {
-    if (!user) return
-    
-    const recurringTransaction = recurringTransactions.find(rt => rt.id === id)
-    if (!recurringTransaction) return
-    
-    // Criar nova transação
-    await addTransaction({
-      type: recurringTransaction.type,
-      amount: recurringTransaction.amount,
-      description: recurringTransaction.description,
-      category_id: recurringTransaction.category_id,
-      card_id: recurringTransaction.card_id,
-      transaction_date: new Date().toISOString().split('T')[0],
-      is_recurring: true,
-      recurring_transaction_id: id
-    })
-    
-    // Atualizar próxima data de execução
-    const nextDate = calculateNextExecutionDate(
-      recurringTransaction.frequency,
-      recurringTransaction.next_execution_date
-    )
-    
-    await updateRecurringTransaction(id, {
-      next_execution_date: nextDate
-    })
-  }
-
-  const processRecurringTransactions = async () => {
-    if (!user) return
-    
-    const today = new Date().toISOString().split('T')[0]
-    
-    // Buscar transações recorrentes que precisam ser executadas
-    const dueRecurringTransactions = recurringTransactions.filter(
-      rt => rt.is_active && rt.next_execution_date <= today
-    )
-    
-    if (dueRecurringTransactions.length === 0) return
-    
-    // Executar todas as transações recorrentes vencidas
-    for (const rt of dueRecurringTransactions) {
-      try {
-        await executeRecurringTransaction(rt.id)
-      } catch (error) {
-        console.error(`Erro ao executar transação recorrente ${rt.description}:`, error)
-      }
-    }
-    
-    // Recarregar transações após executar as recorrentes para atualizar o gráfico
-    await loadTransactions()
-  }
 
   // === ORÇAMENTOS ===
   const addBudget = async (budgetData: Omit<Budget, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
@@ -750,7 +549,6 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
       categories,
       cards,
       transactions,
-      recurringTransactions,
       budgets,
       addCategory,
       updateCategory,
@@ -761,11 +559,6 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
       addTransaction,
       updateTransaction,
       deleteTransaction,
-      addRecurringTransaction,
-      updateRecurringTransaction,
-      deleteRecurringTransaction,
-      executeRecurringTransaction,
-      processRecurringTransactions,
       addBudget,
       updateBudget,
       deleteBudget,

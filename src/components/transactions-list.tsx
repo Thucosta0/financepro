@@ -85,12 +85,7 @@ const TransactionItem = memo(function TransactionItem({
               <span>{getCardName(transaction.card_id)}</span>
               <span>•</span>
               <span>{formatDate(transaction.transaction_date)}</span>
-              {transaction.is_recurring && (
-                <>
-                  <span>•</span>
-                  <span className="text-purple-600">🔄 Recorrente</span>
-                </>
-              )}
+
               {transaction.is_completed && (
                 <>
                   <span>•</span>
