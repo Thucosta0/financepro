@@ -3,8 +3,9 @@
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, ComposedChart, Line } from 'recharts'
 import { useState } from 'react'
 import { useFinancial } from '@/context/financial-context'
-import { PieChart as PieChartIcon, TrendingUp, CalendarDays } from 'lucide-react'
+import { PieChart as PieChartIcon, TrendingUp, CalendarDays, ArrowUpDown } from 'lucide-react'
 import type { Transaction } from '@/lib/supabase-client'
+import * as XLSX from 'xlsx-js-style'
 
 interface ChartsProps {
   transactions: Transaction[]
@@ -135,6 +136,20 @@ export function MonthlyAnalysisChart({ transactions }: ChartsProps) {
     )
   }
 
+  // Função para obter mês atual
+  const getCurrentMonth = () => {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = now.getMonth() + 1
+    return `${year}-${String(month).padStart(2, '0')}`
+  }
+
+  // Estados para período selecionado e modo de visualização
+  const [periodType, setPeriodType] = useState<'single' | 'range' | 'preset'>('single')
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth())
+  const [startMonth, setStartMonth] = useState(getCurrentMonth())
+  const [endMonth, setEndMonth] = useState(getCurrentMonth())
+
   // Obter meses disponíveis das transações
   const availableMonths = transactions
     .filter(t => t.transaction_date && t.amount && !isNaN(t.amount))
@@ -151,20 +166,23 @@ export function MonthlyAnalysisChart({ transactions }: ChartsProps) {
     )
     .sort((a, b) => b.date.getTime() - a.date.getTime())
 
-  // Estados para período selecionado e modo de visualização
-  const [periodType, setPeriodType] = useState<'single' | 'range' | 'preset'>('single')
-  const [selectedMonth, setSelectedMonth] = useState(
-    availableMonths.length > 0 ? availableMonths[0].key : ''
-  )
-  const [startMonth, setStartMonth] = useState(
-    availableMonths.length > 0 ? availableMonths[0].key : ''
-  )
-  const [endMonth, setEndMonth] = useState(
-    availableMonths.length > 0 ? availableMonths[0].key : ''
-  )
+  // Garantir que o mês atual sempre esteja disponível na lista
+  const currentMonth = getCurrentMonth()
+  const currentMonthExists = availableMonths.some(m => m.key === currentMonth)
+  
+  if (!currentMonthExists) {
+    const now = new Date()
+    const currentMonthLabel = now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+    availableMonths.unshift({
+      key: currentMonth,
+      label: currentMonthLabel,
+      date: now
+    })
+  }
   const [presetPeriod, setPresetPeriod] = useState('last3')
   const [viewMode, setViewMode] = useState<'chart' | 'list'>('list')
   const [isExporting, setIsExporting] = useState(false)
+  const [sortOrder, setSortOrder] = useState<'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc'>('amount-desc')
 
   // Opções de período pré-definidas
   const presetOptions = [
@@ -232,8 +250,26 @@ export function MonthlyAnalysisChart({ transactions }: ChartsProps) {
 
   const effectivePeriod = getEffectivePeriod()
 
+  // Função para ordenar transações
+  const sortTransactions = (transactions: Transaction[]) => {
+    const sorted = [...transactions]
+    
+    switch (sortOrder) {
+      case 'date-desc':
+        return sorted.sort((a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime())
+      case 'date-asc':
+        return sorted.sort((a, b) => new Date(a.transaction_date).getTime() - new Date(b.transaction_date).getTime())
+      case 'amount-desc':
+        return sorted.sort((a, b) => b.amount - a.amount)
+      case 'amount-asc':
+        return sorted.sort((a, b) => a.amount - b.amount)
+      default:
+        return sorted
+    }
+  }
+
   // Filtrar transações pelo período selecionado (excluindo finalizadas)
-  const filteredTransactions = transactions
+  const filteredTransactions = sortTransactions(transactions
     .filter(transaction => {
       if (!transaction.transaction_date || !transaction.amount || isNaN(transaction.amount) || !transaction.description) {
         return false
@@ -253,8 +289,7 @@ export function MonthlyAnalysisChart({ transactions }: ChartsProps) {
       
       // Verificar se está no range selecionado
       return monthKey >= effectivePeriod.start && monthKey <= effectivePeriod.end
-    })
-    .sort((a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime())
+    }))
 
   // Calcular totais
   const totalReceitas = filteredTransactions
@@ -378,71 +413,172 @@ export function MonthlyAnalysisChart({ transactions }: ChartsProps) {
     }
   }
 
-  // Função para exportar CSV
-  const exportToCSV = () => {
+  // Função para exportar XLSX
+  const exportToXLSX = () => {
     setIsExporting(true)
     
     const periodLabel = getPeriodLabel()
     
-    // Cabeçalho do CSV
-    const headers = [
-      'Data',
-      'Descrição',
-      'Categoria',
-      'Cartão',
-      'Tipo',
-      'Valor (R$)',
-      'Saldo Acumulado (R$)'
-    ]
-
-    // Ordenar transações por data para calcular saldo acumulado
-    const sortedTransactions = [...filteredTransactions].sort(
+    // Usar as transações já ordenadas pelo usuário
+    const exportTransactions = [...filteredTransactions]
+    
+    // Calcular saldo acumulado baseado na ordenação cronológica
+    const chronologicalTransactions = [...exportTransactions].sort(
       (a, b) => new Date(a.transaction_date).getTime() - new Date(b.transaction_date).getTime()
     )
-
+    
     let saldoAcumulado = 0
-    const csvData = sortedTransactions.map(transaction => {
+    const transactionDataWithBalance = chronologicalTransactions.map(transaction => {
       const valor = transaction.type === 'income' ? transaction.amount : -transaction.amount
       saldoAcumulado += valor
-      
-      return [
-        formatDateForExport(transaction.transaction_date),
-        `"${transaction.description || 'Sem descrição'}"`,
-        `"${transaction.category?.name || 'Sem categoria'}"`,
-        `"${transaction.card?.name || 'N/A'}"`,
-        transaction.type === 'income' ? 'Receita' : 'Despesa',
-        formatValueForExport(transaction.amount),
-        formatValueForExport(saldoAcumulado)
-      ]
+      return {
+        ...transaction,
+        saldoAcumulado
+      }
     })
-
-    // Adicionar resumo no final
-    csvData.push([])
-    csvData.push(['=== RESUMO DO PERÍODO ==='])
-    csvData.push(['Total de Receitas', '', '', '', '', formatValueForExport(totalReceitas), ''])
-    csvData.push(['Total de Despesas', '', '', '', '', formatValueForExport(totalDespesas), ''])
-    csvData.push(['Saldo Final', '', '', '', '', formatValueForExport(saldoTotal), ''])
-    csvData.push(['Número de Transações', '', '', '', '', filteredTransactions.length.toString(), ''])
-
-    // Criar conteúdo CSV
-    const csvContent = [
-      `# Análise Financeira - ${periodLabel}`,
-      `# Relatório gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`,
-      '',
-      headers.join(','),
-      ...csvData.map(row => row.join(','))
-    ].join('\n')
-
-    // Download do arquivo
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' })
-    const link = document.createElement('a')
+    
+    // Mapear para o formato final mantendo a ordenação do usuário
+    const excelData = exportTransactions.map(transaction => {
+      // Encontrar o saldo acumulado correspondente
+      const transactionWithBalance = transactionDataWithBalance.find(t => t.id === transaction.id)
+      
+      return {
+        'Data': formatDateForExport(transaction.transaction_date),
+        'Descrição': transaction.description || 'Sem descrição',
+        'Categoria': transaction.category?.name || 'Sem categoria',
+        'Cartão': transaction.card?.name || 'N/A',
+        'Tipo': transaction.type === 'income' ? 'Receita' : 'Despesa',
+        'Valor (R$)': transaction.amount,
+        'Saldo Acumulado (R$)': transactionWithBalance?.saldoAcumulado || 0
+      }
+    })
+    
+    // Criar dados do resumo
+    const resumoData = [
+      { 'Descrição': 'Total de Receitas', 'Valor (R$)': totalReceitas },
+      { 'Descrição': 'Total de Despesas', 'Valor (R$)': totalDespesas },
+      { 'Descrição': 'Saldo Final', 'Valor (R$)': saldoTotal },
+      { 'Descrição': 'Número de Transações', 'Valor (R$)': filteredTransactions.length }
+    ]
+    
+    // Criar planilha
+    const wb = XLSX.utils.book_new()
+    
+    // Configurar propriedades mínimas do workbook
+    wb.Props = {
+      Title: `Análise Financeira - ${periodLabel}`,
+      Author: 'FinancePRO',
+      CreatedDate: new Date()
+    }
+    
+    // Aba de transações
+    const wsTransactions = XLSX.utils.json_to_sheet(excelData)
+    XLSX.utils.book_append_sheet(wb, wsTransactions, 'Transações')
+    
+    // Aba de resumo
+    const wsResumo = XLSX.utils.json_to_sheet(resumoData)
+    XLSX.utils.book_append_sheet(wb, wsResumo, 'Resumo')
+    
+    // Configurar largura das colunas
+    const colWidths = [
+      { wch: 12 }, // Data
+      { wch: 30 }, // Descrição
+      { wch: 20 }, // Categoria
+      { wch: 15 }, // Cartão
+      { wch: 10 }, // Tipo
+      { wch: 15 }, // Valor
+      { wch: 18 }  // Saldo Acumulado
+    ]
+    wsTransactions['!cols'] = colWidths
+    wsResumo['!cols'] = [{ wch: 25 }, { wch: 18 }]
+    
+    // Aplicar formatação personalizada com xlsx-js-style
+    const range = XLSX.utils.decode_range(wsTransactions['!ref'] || 'A1:G1')
+    
+    // Estilo para títulos (cabeçalho) - fundo #08A8F8, bordas pretas
+    const headerStyle = {
+      font: {
+        bold: true
+      },
+      fill: {
+        fgColor: { rgb: '08A8F8' }
+      },
+      border: {
+        top: { style: 'thin', color: { rgb: '000000' } },
+        bottom: { style: 'thin', color: { rgb: '000000' } },
+        left: { style: 'thin', color: { rgb: '000000' } },
+        right: { style: 'thin', color: { rgb: '000000' } }
+      }
+    }
+    
+    // Estilo para dados - apenas bordas pretas
+    const dataStyle = {
+      border: {
+        top: { style: 'thin', color: { rgb: '000000' } },
+        bottom: { style: 'thin', color: { rgb: '000000' } },
+        left: { style: 'thin', color: { rgb: '000000' } },
+        right: { style: 'thin', color: { rgb: '000000' } }
+      }
+    }
+    
+    // Aplicar formatação em todas as células da aba Transações
+    for (let row = range.s.r; row <= range.e.r; row++) {
+      for (let col = range.s.c; col <= range.e.c; col++) {
+        const cellRef = XLSX.utils.encode_cell({ r: row, c: col })
+        if (!wsTransactions[cellRef]) continue
+        
+        // Aplicar estilo de título na primeira linha, estilo de dados nas demais
+        wsTransactions[cellRef].s = row === 0 ? headerStyle : dataStyle
+      }
+    }
+    
+    // Aplicar formatação similar para aba de resumo
+    const resumoRange = XLSX.utils.decode_range(wsResumo['!ref'] || 'A1:B1')
+    
+    // Aplicar formatação em todas as células da aba Resumo
+    for (let row = resumoRange.s.r; row <= resumoRange.e.r; row++) {
+      for (let col = resumoRange.s.c; col <= resumoRange.e.c; col++) {
+        const cellRef = XLSX.utils.encode_cell({ r: row, c: col })
+        if (!wsResumo[cellRef]) continue
+        
+        // Aplicar estilo de título na primeira linha, estilo de dados nas demais
+        wsResumo[cellRef].s = row === 0 ? headerStyle : dataStyle
+      }
+    }
+    
+    // Gerar arquivo com configurações específicas
+    const fileName = `analise-financeira-${effectivePeriod.start}-${effectivePeriod.end}.xlsx`
+    
+    // Escrever arquivo com opções para evitar modo protegido e suportar estilos
+    const wbout = XLSX.write(wb, {
+      bookType: 'xlsx',
+      type: 'array',
+      compression: true,
+      bookSST: false,
+      cellStyles: true
+    })
+    
+    // Criar blob com configurações para evitar modo protegido
+    const blob = new Blob([wbout], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    })
+    
+    // Usar abordagem de download mais direta para evitar modo protegido
     const url = URL.createObjectURL(blob)
-    link.setAttribute('href', url)
-    link.setAttribute('download', `analise-financeira-${effectivePeriod.start}-${effectivePeriod.end}.csv`)
-    link.style.visibility = 'hidden'
+    const link = document.createElement('a')
+    link.href = url
+    link.download = fileName
+    link.style.display = 'none'
+    
+    // Adicionar o link ao DOM
     document.body.appendChild(link)
+    
+    // Fazer download direto
     link.click()
+    
+    // Cleanup imediato
     document.body.removeChild(link)
+    URL.revokeObjectURL(url)
     
     setTimeout(() => setIsExporting(false), 1000)
   }
@@ -705,8 +841,8 @@ export function MonthlyAnalysisChart({ transactions }: ChartsProps) {
         </div>
       </div>
 
-      {/* Controles: Toggle + Exportação */}
-      <div className="flex flex-col sm:flex-row justify-between items-center space-y-3 sm:space-y-0">
+      {/* Controles: Toggle + Ordenação + Exportação */}
+      <div className="flex flex-col lg:flex-row justify-between items-center space-y-3 lg:space-y-0 lg:space-x-4">
         {/* Toggle entre Gráfico e Lista */}
         <div className="bg-gray-100 rounded-lg p-1 flex">
           <button
@@ -731,10 +867,27 @@ export function MonthlyAnalysisChart({ transactions }: ChartsProps) {
           </button>
         </div>
 
+        {/* Controle de Ordenação (só aparece no modo lista) */}
+        {viewMode === 'list' && (
+          <div className="flex items-center space-x-2">
+            <ArrowUpDown className="h-4 w-4 text-gray-400" />
+                         <select
+               value={sortOrder}
+               onChange={(e) => setSortOrder(e.target.value as typeof sortOrder)}
+               className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+             >
+               <option value="amount-desc">💰 Valor (Maior)</option>
+               <option value="amount-asc">💰 Valor (Menor)</option>
+               <option value="date-desc">📅 Data (Mais recente)</option>
+               <option value="date-asc">📅 Data (Mais antiga)</option>
+             </select>
+          </div>
+        )}
+
         {/* Botões de Exportação */}
         <div className="flex space-x-2">
           <button
-            onClick={exportToCSV}
+            onClick={exportToXLSX}
             disabled={isExporting || filteredTransactions.length === 0}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center space-x-2 ${
               isExporting || filteredTransactions.length === 0
@@ -743,7 +896,7 @@ export function MonthlyAnalysisChart({ transactions }: ChartsProps) {
             }`}
           >
             <span>📊</span>
-            <span>{isExporting ? 'Exportando...' : 'CSV'}</span>
+            <span>{isExporting ? 'Exportando...' : 'Excel'}</span>
           </button>
           
           <button
@@ -1029,6 +1182,60 @@ export function BalanceEvolutionChart({ transactions }: ChartsProps) {
 
 
 
+// Componente de resumo de parcelas
+function InstallmentSummary({ transactions }: { transactions: Transaction[] }) {
+  const installmentTransactions = transactions.filter(t => t.installment_number && t.total_installments)
+  
+  if (installmentTransactions.length === 0) {
+    return null
+  }
+
+  // Agrupar por installment_group_id
+  const installmentGroups = installmentTransactions.reduce((groups, transaction) => {
+    const groupId = transaction.installment_group_id
+    if (!groupId) return groups
+    
+    if (!groups[groupId]) {
+      groups[groupId] = []
+    }
+    groups[groupId].push(transaction)
+    return groups
+  }, {} as Record<string, Transaction[]>)
+
+  const totalGroups = Object.keys(installmentGroups).length
+  const totalInstallments = installmentTransactions.length
+  const pendingInstallments = installmentTransactions.filter(t => !t.is_completed).length
+  const completedInstallments = installmentTransactions.filter(t => t.is_completed).length
+
+  return (
+    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200 mb-6">
+      <div className="flex items-center mb-3">
+        <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+        <h3 className="text-sm font-medium text-blue-800">📅 Resumo de Parcelas</h3>
+      </div>
+      
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+        <div className="text-center">
+          <div className="text-lg font-bold text-blue-600">{totalGroups}</div>
+          <div className="text-blue-700">Compras Parceladas</div>
+        </div>
+        <div className="text-center">
+          <div className="text-lg font-bold text-blue-600">{totalInstallments}</div>
+          <div className="text-blue-700">Total de Parcelas</div>
+        </div>
+        <div className="text-center">
+          <div className="text-lg font-bold text-orange-600">{pendingInstallments}</div>
+          <div className="text-orange-700">Pendentes</div>
+        </div>
+        <div className="text-center">
+          <div className="text-lg font-bold text-green-600">{completedInstallments}</div>
+          <div className="text-green-700">Pagas</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // Componente principal que agrega todos os gráficos
 export function Charts() {
   const { transactions } = useFinancial()
@@ -1082,6 +1289,7 @@ export function Charts() {
             <h3 className="text-base lg:text-lg font-medium mb-4 text-gray-900 text-center lg:text-left">
               📈 Análise Mensal Completa
             </h3>
+            <InstallmentSummary transactions={transactions} />
             <MonthlyAnalysisChart transactions={transactions} />
           </div>
         )}

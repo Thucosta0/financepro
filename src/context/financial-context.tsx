@@ -352,25 +352,96 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
   const addTransaction = async (transactionData: Omit<Transaction, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
     if (!user) return
     
-    const { data, error } = await supabase
-      .from('transactions')
-      .insert({
-        ...transactionData,
-        user_id: user.id
+    // Verificar se é uma transação parcelada
+    const isInstallmentTransaction = (transactionData as any).format === 'parcelada' && 
+                                   (transactionData as any).installments && 
+                                   (transactionData as any).start_date && 
+                                   (transactionData as any).end_date
+
+    if (isInstallmentTransaction) {
+      // Lógica para transações parceladas
+      const installments = (transactionData as any).installments
+      const startDate = new Date((transactionData as any).start_date)
+      const valuePerInstallment = transactionData.amount / installments
+      const installmentGroupId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0
+        const v = c === 'x' ? r : (r & 0x3 | 0x8)
+        return v.toString(16)
       })
-      .select(`
-        *,
-        category:categories(*),
-        card:cards!card_id(*)
-      `)
-      .single()
-    
-    if (error) {
-      console.error('Error adding transaction:', error)
-      throw error
+      
+      // Criar array de transações (uma para cada parcela)
+      const installmentTransactions = []
+      
+      for (let i = 0; i < installments; i++) {
+        const installmentDate = new Date(startDate.getFullYear(), startDate.getMonth() + i, startDate.getDate())
+        
+        const installmentTransaction = {
+          description: `${transactionData.description} (${i + 1}/${installments})`,
+          amount: valuePerInstallment,
+          type: transactionData.type,
+          category_id: transactionData.category_id,
+          card_id: transactionData.card_id,
+          transaction_date: installmentDate.toISOString().split('T')[0],
+          due_date: transactionData.due_date,
+          notes: `${transactionData.notes || ''}\n🔄 Parcela ${i + 1} de ${installments}`.trim(),
+          installment_number: i + 1,
+          total_installments: installments,
+          installment_group_id: installmentGroupId,
+          user_id: user.id
+        }
+        
+        installmentTransactions.push(installmentTransaction)
+      }
+      
+      // Inserir todas as parcelas no banco
+      const { data, error } = await supabase
+        .from('transactions')
+        .insert(installmentTransactions)
+        .select(`
+          *,
+          category:categories(*),
+          card:cards!card_id(*)
+        `)
+      
+      if (error) {
+        console.error('Error adding installment transactions:', error)
+        throw error
+      }
+      
+      // Atualizar estado com todas as parcelas
+      setTransactions(prev => [...(data || []), ...prev])
+      
+    } else {
+      // Lógica para transações normais (única, recorrente, etc.)
+      const cleanTransactionData = {
+        description: transactionData.description,
+        amount: transactionData.amount,
+        type: transactionData.type,
+        category_id: transactionData.category_id,
+        card_id: transactionData.card_id,
+        transaction_date: transactionData.transaction_date,
+        due_date: transactionData.due_date,
+        notes: transactionData.notes,
+        user_id: user.id
+      }
+      
+      const { data, error } = await supabase
+        .from('transactions')
+        .insert(cleanTransactionData)
+        .select(`
+          *,
+          category:categories(*),
+          card:cards!card_id(*)
+        `)
+        .single()
+      
+      if (error) {
+        console.error('Error adding transaction:', error)
+        throw error
+      }
+      
+      setTransactions(prev => [data, ...prev])
     }
-    
-    setTransactions(prev => [data, ...prev])
   }
 
   const updateTransaction = async (id: string, transactionData: Partial<Transaction>) => {

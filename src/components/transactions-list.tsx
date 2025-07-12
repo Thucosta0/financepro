@@ -14,7 +14,7 @@ interface TransactionItemProps {
   onDelete?: (id: string, description: string) => void
   formatValue: (value: number) => string
   formatDate: (date: string) => string
-  getCardName: (cardId: string) => string
+  getCardName: (cardId?: string) => string
   isTrialExpired: boolean
 }
 
@@ -86,6 +86,16 @@ const TransactionItem = memo(function TransactionItem({
               <span>•</span>
               <span>{formatDate(transaction.transaction_date)}</span>
 
+              {/* Mostrar informações de parcela se existir */}
+              {transaction.installment_number && transaction.total_installments && (
+                <>
+                  <span>•</span>
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    📅 {transaction.installment_number}/{transaction.total_installments}
+                  </span>
+                </>
+              )}
+
               {transaction.is_completed && (
                 <>
                   <span>•</span>
@@ -152,7 +162,7 @@ interface TransactionsListProps {
   onDelete: (id: string, description: string) => void
   formatValue: (value: number) => string
   formatDate: (date: string) => string
-  getCardName: (cardId: string) => string
+  getCardName: (cardId?: string) => string
   isTrialExpired: boolean
 }
 

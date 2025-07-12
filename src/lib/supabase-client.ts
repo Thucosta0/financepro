@@ -73,11 +73,15 @@ export interface Transaction {
   amount: number
   type: 'income' | 'expense'
   category_id: string
-  card_id: string
+  card_id?: string
   transaction_date: string
   due_date?: string
   notes?: string
   is_completed?: boolean
+  // Campos para parcelamento
+  installment_number?: number  // Número da parcela atual (1, 2, 3...)
+  total_installments?: number  // Total de parcelas (6, 12, 24...)
+  installment_group_id?: string // ID para agrupar parcelas da mesma transação
   created_at: string
   updated_at: string
   category?: Category

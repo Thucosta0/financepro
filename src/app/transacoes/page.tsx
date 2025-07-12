@@ -31,6 +31,7 @@ export default function TransacoesPage() {
     min: '',
     max: ''
   })
+  const [installmentFilter, setInstallmentFilter] = useState('')
   
   const { 
     transactions, 
@@ -323,8 +324,16 @@ export default function TransacoesPage() {
     const matchMinAmount = !amountFilter.min || transacao.amount >= parseFloat(amountFilter.min)
     const matchMaxAmount = !amountFilter.max || transacao.amount <= parseFloat(amountFilter.max)
     
+    // Filtro de parcelas (por mês de vencimento)
+    const matchInstallment = !installmentFilter || (() => {
+      const transactionMonth = transactionDate.getMonth() + 1
+      const transactionYear = transactionDate.getFullYear()
+      const [filterYear, filterMonth] = installmentFilter.split('-').map(Number)
+      return transactionYear === filterYear && transactionMonth === filterMonth
+    })()
+    
     return (matchDescricao || matchCategoria) && matchTipo && matchCategory && matchCard && 
-           matchStartDate && matchEndDate && matchMinAmount && matchMaxAmount
+           matchStartDate && matchEndDate && matchMinAmount && matchMaxAmount && matchInstallment
   })
 
   const formatarValor = (valor: number) => {
@@ -338,7 +347,8 @@ export default function TransacoesPage() {
     return new Date(data).toLocaleDateString('pt-BR')
   }
 
-  const getCardName = (cardId: string) => {
+  const getCardName = (cardId?: string) => {
+    if (!cardId) return 'Sem cartão'
     const card = cards.find(c => c.id === cardId)
     if (!card) return 'Cartão não encontrado'
     return `${card.name} ${card.last_digits ? `(**** ${card.last_digits})` : ''}`
@@ -350,7 +360,7 @@ export default function TransacoesPage() {
       return
     }
 
-            const headers = ['Data', 'Descrição', 'Categoria', 'Cartão', 'Tipo', 'Valor', 'Data Vencimento']
+            const headers = ['Data', 'Descrição', 'Categoria', 'Cartão', 'Tipo', 'Valor', 'Data Vencimento', 'Parcela']
     const csvData = [
       headers.join(','),
       ...transacoesFiltradas.map(t => [
@@ -361,7 +371,7 @@ export default function TransacoesPage() {
         t.type === 'income' ? 'Receita' : 'Despesa',
         t.amount.toString().replace('.', ','),
         t.due_date ? formatarData(t.due_date) : 'Sem vencimento',
-        
+        t.installment_number && t.total_installments ? `${t.installment_number}/${t.total_installments}` : 'Única'
       ].join(','))
     ].join('\n')
 
@@ -416,6 +426,7 @@ export default function TransacoesPage() {
                 <th>Tipo</th>
                 <th>Valor</th>
                 <th>Vencimento</th>
+                <th>Parcela</th>
               </tr>
             </thead>
             <tbody>
@@ -433,6 +444,7 @@ export default function TransacoesPage() {
             ${t.type === 'income' ? '+' : '-'}${formatarValor(t.amount)}
           </td>
           <td>${t.due_date ? formatarData(t.due_date) : '-'}</td>
+          <td>${t.installment_number && t.total_installments ? `${t.installment_number}/${t.total_installments}` : 'Única'}</td>
         </tr>
       `
     })
@@ -459,6 +471,7 @@ export default function TransacoesPage() {
     setCategoryFilter('')
     setCardFilter('')
     setAmountFilter({ min: '', max: '' })
+    setInstallmentFilter('')
     setShowAdvancedFilters(false)
   }
 
@@ -699,7 +712,7 @@ export default function TransacoesPage() {
             {/* Filtros avançados */}
             {showAdvancedFilters && (
               <div className="border-t pt-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Data Inicial</label>
                     <input
@@ -747,6 +760,16 @@ export default function TransacoesPage() {
                         </option>
                       ))}
                     </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">📅 Mês Parcela</label>
+                    <input
+                      type="month"
+                      value={installmentFilter}
+                      onChange={(e) => setInstallmentFilter(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                      title="Filtrar por mês de vencimento das parcelas"
+                    />
                   </div>
                   </div>
 
@@ -850,7 +873,7 @@ export default function TransacoesPage() {
                     
                     {/* Informações secundárias */}
                     <div className="flex items-center justify-between text-sm text-gray-500">
-                      <div className="flex items-center space-x-3">
+                      <div className="flex items-center space-x-3 flex-wrap">
                         <span>{getCardName(transacao.card_id)}</span>
                         <span>•</span>
                         <span>{formatarData(transacao.transaction_date)}</span>
@@ -858,6 +881,16 @@ export default function TransacoesPage() {
                           <>
                             <span>•</span>
                             <span className="text-orange-600">📅 {formatarData(transacao.due_date)}</span>
+                          </>
+                        )}
+
+                        {/* Mostrar informações de parcela se existir */}
+                        {transacao.installment_number && transacao.total_installments && (
+                          <>
+                            <span>•</span>
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              📅 {transacao.installment_number}/{transacao.total_installments}
+                            </span>
                           </>
                         )}
 
@@ -935,7 +968,7 @@ export default function TransacoesPage() {
                         }`}>
                           {transacao.description}
                         </h3>
-                      <div className="mt-1 flex items-center space-x-4 text-sm text-gray-500">
+                      <div className="mt-1 flex items-center space-x-4 text-sm text-gray-500 flex-wrap">
                         <span className="flex items-center">
                           <span className="inline-block w-2 h-2 rounded-full mr-2" 
                                 style={{ backgroundColor: transacao.category?.color || '#gray' }}></span>
@@ -949,6 +982,16 @@ export default function TransacoesPage() {
                           <>
                             <span>•</span>
                             <span className="text-orange-600 font-medium">📅 Vence {formatarData(transacao.due_date)}</span>
+                          </>
+                        )}
+
+                        {/* Mostrar informações de parcela se existir */}
+                        {transacao.installment_number && transacao.total_installments && (
+                          <>
+                            <span>•</span>
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              📅 {transacao.installment_number}/{transacao.total_installments}
+                            </span>
                           </>
                         )}
 

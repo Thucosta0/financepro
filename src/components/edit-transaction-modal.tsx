@@ -33,7 +33,7 @@ export function EditTransactionModal({ isOpen, onClose, transaction }: EditTrans
         amount: transaction.amount.toString(),
         type: transaction.type,
         category_id: transaction.category_id,
-        card_id: transaction.card_id,
+        card_id: transaction.card_id || '',
         transaction_date: transaction.transaction_date,
         due_date: transaction.due_date || '',
         notes: transaction.notes || ''
@@ -53,7 +53,7 @@ export function EditTransactionModal({ isOpen, onClose, transaction }: EditTrans
         amount: parseFloat(formData.amount),
         type: formData.type,
         category_id: formData.category_id,
-        card_id: formData.card_id,
+        card_id: formData.card_id || undefined,
         transaction_date: formData.transaction_date,
         due_date: formData.due_date || undefined,
         notes: formData.notes.trim() || undefined,
@@ -78,6 +78,31 @@ export function EditTransactionModal({ isOpen, onClose, transaction }: EditTrans
 
   return (
     <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center bg-black bg-opacity-50">
+      <style jsx>{`
+        select option {
+          padding: 12px 16px !important;
+          font-size: 16px !important;
+          line-height: 1.5 !important;
+          min-height: 44px !important;
+        }
+        
+        @media (max-width: 768px) {
+          select {
+            font-size: 16px !important;
+            line-height: 1.5 !important;
+            -webkit-appearance: none !important;
+            -moz-appearance: none !important;
+            appearance: none !important;
+          }
+          
+          select option {
+            padding: 16px !important;
+            font-size: 16px !important;
+            line-height: 1.6 !important;
+            min-height: 50px !important;
+          }
+        }
+      `}</style>
       <div className="bg-white w-full h-full lg:h-auto lg:max-h-[85vh] lg:rounded-lg shadow-lg lg:max-w-md lg:w-full lg:m-4 flex flex-col">
         {/* Header fixo */}
         <div className="flex items-center justify-between p-4 lg:p-6 border-b bg-gradient-to-r from-blue-600 to-indigo-600 text-white lg:rounded-t-lg flex-shrink-0">
@@ -142,11 +167,12 @@ export function EditTransactionModal({ isOpen, onClose, transaction }: EditTrans
                   type: e.target.value as 'income' | 'expense',
                   category_id: '' // Limpar categoria quando mudar o tipo
                 })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base appearance-none bg-white"
+                style={{ fontSize: '16px', lineHeight: '1.5' }}
                 required
               >
-                <option value="expense">💸 Despesa</option>
-                <option value="income">💰 Receita</option>
+                <option value="expense" style={{ fontSize: '16px', padding: '12px 16px', lineHeight: '1.5' }}>💸 Despesa</option>
+                <option value="income" style={{ fontSize: '16px', padding: '12px 16px', lineHeight: '1.5' }}>💰 Receita</option>
               </select>
             </div>
 
@@ -158,12 +184,13 @@ export function EditTransactionModal({ isOpen, onClose, transaction }: EditTrans
               <select
                 value={formData.category_id}
                 onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base appearance-none bg-white"
+                style={{ fontSize: '16px', lineHeight: '1.5' }}
                 required
               >
-                <option value="">Selecione uma categoria</option>
+                <option value="" style={{ fontSize: '16px', padding: '12px 16px', lineHeight: '1.5' }}>Selecione uma categoria</option>
                 {categoriesFiltradas.map(category => (
-                  <option key={category.id} value={category.id}>
+                  <option key={category.id} value={category.id} style={{ fontSize: '16px', padding: '12px 16px', lineHeight: '1.5' }}>
                     {category.icon} {category.name}
                   </option>
                 ))}
@@ -173,17 +200,18 @@ export function EditTransactionModal({ isOpen, onClose, transaction }: EditTrans
             {/* Cartão */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Cartão/Conta *
+                Cartão/Conta
+                <span className="text-xs text-gray-500 ml-1">(opcional)</span>
               </label>
               <select
                 value={formData.card_id}
                 onChange={(e) => setFormData({ ...formData, card_id: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
-                required
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base appearance-none bg-white"
+                style={{ fontSize: '16px', lineHeight: '1.5' }}
               >
-                <option value="">Selecione um cartão</option>
+                <option value="" style={{ fontSize: '16px', padding: '12px 16px', lineHeight: '1.5' }}>Selecione um cartão</option>
                 {cards.map(card => (
-                  <option key={card.id} value={card.id}>
+                  <option key={card.id} value={card.id} style={{ fontSize: '16px', padding: '12px 16px', lineHeight: '1.5' }}>
                     {card.name} {card.last_digits ? `(**** ${card.last_digits})` : ''}
                   </option>
                 ))}
