@@ -10,7 +10,7 @@ import { Charts } from '@/components/dashboard/charts'
 import { NewTransactionModal } from '@/components/new-transaction-modal'
 
 import { ProtectedRoute } from '@/components/protected-route'
-import { Plus, TrendingUp, TrendingDown, DollarSign, Hash, AlertTriangle, CheckCircle, Clock, Users } from 'lucide-react'
+import { Plus, TrendingUp, TrendingDown, DollarSign, Hash, AlertTriangle, CheckCircle, Clock, Users, ArrowUpDown, Calendar, CreditCard } from 'lucide-react'
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -19,6 +19,7 @@ export default function DashboardPage() {
   const { canPerformAction, getStatusText, isInTrial, isTrialExpired, getTrialDaysRemaining } = useSubscription()
   
   const [showNewTransactionModal, setShowNewTransactionModal] = useState(false)
+  const [transactionSortBy, setTransactionSortBy] = useState<'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc' | 'description-asc' | 'description-desc'>('date-desc')
 
   const [showOnboarding, setShowOnboarding] = useState(false)
 
@@ -45,6 +46,30 @@ export default function DashboardPage() {
                               cards.length > 0
 
   const canCreateTransactionFull = canCreateTransaction && canPerformAction('transactions')
+
+  // Função para ordenar transações
+  const getSortedTransactions = () => {
+    if (!transactions || transactions.length === 0) return []
+
+    const sortedTransactions = [...transactions]
+
+    switch (transactionSortBy) {
+      case 'date-desc':
+        return sortedTransactions.sort((a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime())
+      case 'date-asc':
+        return sortedTransactions.sort((a, b) => new Date(a.transaction_date).getTime() - new Date(b.transaction_date).getTime())
+      case 'amount-desc':
+        return sortedTransactions.sort((a, b) => b.amount - a.amount)
+      case 'amount-asc':
+        return sortedTransactions.sort((a, b) => a.amount - b.amount)
+      case 'description-asc':
+        return sortedTransactions.sort((a, b) => a.description.localeCompare(b.description))
+      case 'description-desc':
+        return sortedTransactions.sort((a, b) => b.description.localeCompare(a.description))
+      default:
+        return sortedTransactions
+    }
+  }
 
   // Função para obter propriedades do botão de transação
   const getTransactionButtonProps = () => {
@@ -119,6 +144,8 @@ export default function DashboardPage() {
       </ProtectedRoute>
     )
   }
+
+  const sortedTransactions = getSortedTransactions()
 
   return (
     <ProtectedRoute>
@@ -321,29 +348,77 @@ export default function DashboardPage() {
                 {/* Últimas Transações */}
                 <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow">
                   <div className="p-6 border-b">
-                    <h3 className="text-lg font-semibold text-center">Últimas Transações</h3>
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-semibold">Últimas Transações</h3>
+                      
+                      {/* Dropdown de ordenação */}
+                      {transactions.length > 0 && (
+                        <div className="flex items-center space-x-2">
+                          <ArrowUpDown className="h-4 w-4 text-gray-400" />
+                          <select
+                            value={transactionSortBy}
+                            onChange={(e) => setTransactionSortBy(e.target.value as typeof transactionSortBy)}
+                            className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          >
+                            <option value="date-desc">📅 Mais recentes</option>
+                            <option value="date-asc">📅 Mais antigas</option>
+                            <option value="amount-desc">💰 Maior valor</option>
+                            <option value="amount-asc">💰 Menor valor</option>
+                            <option value="description-asc">📝 A → Z</option>
+                            <option value="description-desc">📝 Z → A</option>
+                          </select>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="p-6">
-                    {transactions.length > 0 ? (
+                    {sortedTransactions.length > 0 ? (
                       <div className="space-y-4">
-                        {transactions.slice(0, 5).map((transaction) => (
+                        {sortedTransactions.slice(0, 5).map((transaction) => (
                           <div key={transaction.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                            <div>
+                            <div className="flex-1">
                               <p className="font-medium text-gray-900">{transaction.description}</p>
-                              <p className="text-sm text-gray-600">
-                                {transaction.category?.name} • {new Date(transaction.transaction_date).toLocaleDateString('pt-BR')}
+                              <div className="flex items-center space-x-2 text-sm text-gray-600">
+                                <span className="flex items-center">
+                                  <Calendar className="h-3 w-3 mr-1" />
+                                  {new Date(transaction.transaction_date).toLocaleDateString('pt-BR')}
+                                </span>
+                                <span>•</span>
+                                <span>{transaction.category?.name}</span>
+                                <span>•</span>
+                                <span className="flex items-center">
+                                  <CreditCard className="h-3 w-3 mr-1" />
+                                  {transaction.card?.name}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className={`font-semibold ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                                {transaction.type === 'income' ? '+' : '-'}
+                                {new Intl.NumberFormat('pt-BR', {
+                                  style: 'currency',
+                                  currency: 'BRL',
+                                  minimumFractionDigits: 2
+                                }).format(transaction.amount)}
+                              </p>
+                              <p className="text-xs text-gray-500 mt-1">
+                                {transaction.type === 'income' ? 'Receita' : 'Despesa'}
                               </p>
                             </div>
-                            <p className={`font-semibold ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                              {transaction.type === 'income' ? '+' : '-'}
-                              {new Intl.NumberFormat('pt-BR', {
-                                style: 'currency',
-                                currency: 'BRL',
-                                minimumFractionDigits: 2
-                              }).format(transaction.amount)}
-                            </p>
                           </div>
                         ))}
+                        
+                        {/* Botão para ver todas as transações */}
+                        {sortedTransactions.length > 5 && (
+                          <div className="text-center pt-4">
+                            <button
+                              onClick={() => router.push('/transacoes')}
+                              className="text-blue-600 hover:text-blue-700 text-sm font-medium hover:underline"
+                            >
+                              Ver todas as {sortedTransactions.length} transações →
+                            </button>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="text-center py-8">

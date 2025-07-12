@@ -65,11 +65,10 @@ SELECT
 -- List remaining tables to confirm
 SELECT 
     'remaining tables' as check_type,
-    string_agg(table_name, ', ') as tables
+    string_agg(table_name, ', ' ORDER BY table_name) as tables
 FROM information_schema.tables 
 WHERE table_schema = 'public' 
-AND table_type = 'BASE TABLE'
-ORDER BY table_name;
+AND table_type = 'BASE TABLE';
 
 -- Show the final structure of the transactions table
 SELECT 
